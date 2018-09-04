@@ -1,5 +1,5 @@
 from lib.parse_plot_data import get_txt_csv, make_oscilloscope_df, \
-    make_spectroscopy_df, plot_dfs, plot_dfs_with_fits
+    make_spectroscopy_df, plot_dfs, plot_dfs_with_fits, plot_dfs_spectroscopy
 from lib.filter_data import filter_loading
 from lib.fit_data import fit_loading_dfs
 import matplotlib.pyplot as plt
@@ -33,7 +33,10 @@ def main():
     plt.show(fig)
     print(fit_df_rr)
 
-
+    # Loading spectroscopy data
+    dfs = make_spectroscopy_df(c.spectroscopy_path)
+    fig, axes = plot_dfs_spectroscopy(dfs)
+    plt.show(fig)
 
 if __name__ == '__main__':
     main()
