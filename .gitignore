@@ -1,6 +1,7 @@
 data
 F20_Preparatory_Material.pdf
 notebooks
+.idea
 
 
 # Created by https://www.gitignore.io/api/windows,pycharm,jupyternotebook

@@ -1,8 +1,9 @@
 from lmfit import Parameters, fit_report, minimize
+from lmfit.models import Model
 import pandas as pd
+import matplotlib.pyplot as plt
 import numpy as np
-from lib.filter_data import filter_zoomed_spectroscopy
-
+from lib.util import remove_nan_from_masked_column
 
 def loading_residual(pars, x, data=None):
     vals = pars.valuesdict()
@@ -79,6 +80,79 @@ def fit_loading_dfs(dfs, offset_on=False):
     return dfs, fit_df
 
 
-def fit_spectroscopy_dfs(dfs):
+def fit_spectroscopy_entire_dfs(dfs):
     fit_df = []
     return dfs, fit_df
+
+
+def fit_spectroscopy_single_dfs(dfs, fct='gaussian', all_init_params=None):
+    fcts = {
+        'gaussian': gaussian,
+        'poly_gaussian': poly_gaussian,
+        'lorentzian': lorentzian
+    }
+
+    fit_data = {
+        'file': [file_name for df, file_name in dfs],
+        'amp': [],
+        'amp_err': [],
+        'cen': [],
+        'cen_err': [],
+        'sig': [],
+        'sig_err': [],
+        'off': [],
+        'off_err': [],
+        'redchi': [],
+    }
+
+    dfs_fitted = []
+
+    for i, df in enumerate(dfs):
+        df, file_name = df
+        x_init = df.index.values
+        y_init = df.values[:, 0]
+        plt.plot(x_init, y_init, 'b')
+        x_crop = x_init
+        y_crop = df.values[:, 2]
+
+        x_crop, y_crop = remove_nan_from_masked_column(x_crop, y_crop)
+
+        model = Model(fcts[fct], independent_vars=['x'])
+        amp, cen, sig, off = all_init_params[i]
+        params = model.make_params(amp=amp, cen=cen, sig=sig, off=off)
+        fit = model.fit(y_crop, x=x_crop, params=params, method='leastsq', nan_policy='propagate')
+        print(fit.fit_report(min_correl=0.25))
+
+        amp, cen, sig, off = fit.best_values.values()
+        df['Best fit - Aux in [V]'] = gaussian(x_init, amp=amp, cen=cen, sig=sig, off=off)
+        dfs_fitted.append((df, file_name))
+
+        fit_params = fit.params
+        fit_data['redchi'].append(fit.redchi)
+        for key in fit_data.keys():
+            if not key[3:] == '_err' and not key == 'redchi' and not key == 'file':
+                fit_data[key].append(fit_params[key].value)
+                fit_data[key + '_err'].append(fit_params[key].stderr)
+
+        #plt.plot(x_crop, y_crop, 'r.')
+        #plt.plot(x_crop, fit.init_fit, 'g--')
+        #plt.plot(x_init, gaussian(x_init, amp=amp, cen=cen, sig=sig, off=off), 'y--')
+        #plt.show()
+
+    fit_df = pd.DataFrame(data=fit_data)
+    fit_df = fit_df.set_index('file', drop=True).sort_index(level=0)
+    print(fit_df)
+
+    return dfs_fitted, fit_df
+
+
+def gaussian(x, amp, cen, sig, off):
+    return amp / (np.sqrt(2 * np.pi) * sig) * np.exp(-((x-cen) / sig)**2 / 2) + off
+
+
+def lorentzian(x):
+    return x
+
+
+def poly_gaussian(x):
+    return x

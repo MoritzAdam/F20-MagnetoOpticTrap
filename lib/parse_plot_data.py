@@ -1,9 +1,10 @@
 import matplotlib.pyplot as plt
+import numpy as np
 import pandas as pd
 import os
 from math import ceil
 import lib.constants as c
-from lib.util import get_nearest
+from lib.util import get_nearest, remove_nan_from_masked_column
 
 
 def get_txt_csv(path):
@@ -48,7 +49,7 @@ def plot_dfs(dfs):
         axis[i].plot(df.index, df.values, '.', markersize=c.PLOT_MARKERSIZE)
         axis[i].set_title(df.columns[0])
     return fig, axis
-
+# TODO: move mask function out of fit function, adding additional column to df; call mask function in main, call fit function with dfs with additional mask columns, returning df with additional fit column; call plot function with df including masked and fit columns
 
 def plot_dfs_with_fits(dfs):
     plot_columns = ceil(len(dfs) / 4)
@@ -61,7 +62,7 @@ def plot_dfs_with_fits(dfs):
     return fig, axes
 
 
-def plot_dfs_spectroscopy(dfs, max_column_number, plot_PDH_out = True,
+def plot_dfs_spectroscopy(dfs, max_column_number, plot_PDH_out = True, plot_fit=False,
                           subplot_title_addition='', global_title='', emphasize=None):
     plot_columns = ceil(len(dfs)/max_column_number)
     fig, axis = plt.subplots(plot_columns, max_column_number,
@@ -69,44 +70,35 @@ def plot_dfs_spectroscopy(dfs, max_column_number, plot_PDH_out = True,
 
     if not max_column_number == 1:
         axis = axis.ravel()
-        for i, df in enumerate(dfs):
-            df, file_name = df
-            axis[i].plot(df.index, df.values[:, 0], '.', markersize=c.PLOT_MARKERSIZE)
-            if emphasize is not None:
-                for single_emphasize in emphasize:
-                    lower, upper = single_emphasize
-                    lower = get_nearest(df, lower)
-                    upper = get_nearest(df, upper)
-                    df_to_be_emphasized = df.loc[lower.name:upper.name]
-                    axis[i].plot(df_to_be_emphasized.index, df_to_be_emphasized.values[:, 0], '.', color='r',
-                                 markersize=c.PLOT_MARKERSIZE)
-            if plot_PDH_out:
-                add_axis = axis[i].twinx()
-                add_axis.plot(df.index,df.values[:, 1], '.', color='grey', alpha=0.3, markersize=c.PLOT_MARKERSIZE)
-            axis[i].set_title(txt_title(file_name) + subplot_title_addition, fontsize=10)
-        plt.tight_layout()
-
     else:
-        df, file_name = dfs[0]
-        axis.plot(df.index, df.values[:, 0], '.', markersize=c.PLOT_MARKERSIZE)
+        axis = np.array([axis])
+
+    for i, df in enumerate(dfs):
+        df, file_name = df
+        axis[i].plot(df.index, df.values[:, 0], '.', color='cornflowerblue', markersize=c.PLOT_MARKERSIZE)
+
         if emphasize is not None:
             for single_emphasize in emphasize:
                 lower, upper = single_emphasize
                 lower = get_nearest(df, lower)
                 upper = get_nearest(df, upper)
                 df_to_be_emphasized = df.loc[lower.name:upper.name]
-                axis.plot(df_to_be_emphasized.index, df_to_be_emphasized.values[:, 0], '.', color='r',
-                          markersize=c.PLOT_MARKERSIZE)
+                axis[i].plot(df_to_be_emphasized.index, df_to_be_emphasized.values[:, 0], '.', color='orangered',
+                             markersize=c.PLOT_MARKERSIZE)
+
         if plot_PDH_out:
-            add_axis = axis.twinx()
+            add_axis = axis[i].twinx()
             add_axis.plot(df.index, df.values[:, 1], '.', color='grey', alpha=0.3, markersize=c.PLOT_MARKERSIZE)
-        axis.set_title(txt_title(file_name) + subplot_title_addition, fontsize=10)
+
+        if plot_fit:
+            axis[i].plot(df.index, df.values[:, 2], '-', color='black')
+            axis[i].plot(df.index, df.values[:, 4], '-', color='r', alpha=0.7)
+
+        axis[i].set_title(txt_title(file_name) + subplot_title_addition, fontsize=10)
+    if not max_column_number == 1:
+        plt.tight_layout()
 
     return fig, axis
-
-
-def plot_dfs_spec_with_fits(dfs, max_column_number):
-    return dfs
 
 
 def txt_title(file_name):
