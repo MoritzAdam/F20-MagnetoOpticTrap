@@ -22,7 +22,6 @@ def main():
     dfs_fit, fit_df = fit_loading_dfs(dfs, offset_on=False)
     fig, axes = plot_dfs_with_fits(dfs_fit)
     plt.show()
-    print(fit_df)
 
     # 4 - Analysis of the loading curves
     fig, axes = loading_analysis(fit_df)

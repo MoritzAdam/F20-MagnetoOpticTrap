@@ -24,10 +24,11 @@ def fit_loading_dfs(dfs, offset_on=False):
     fit_data = {
         'file': [df.columns[0] for df in dfs],
         'amp': [],
+        'amp_err': [],
         'offset': [],
-        #         'amp_std': [],
+        'offset_err': [],
         'tau': [],
-        #         'tau_std': [],
+        'tau_err': [],
         'redchi': [],
     }
     for i, df in enumerate(dfs):
@@ -45,20 +46,31 @@ def fit_loading_dfs(dfs, offset_on=False):
         p = Parameters()
         p.add('v1', value=vmax, min=vmax - dv / 10, max=vmax)
         p.add('v2', value=vmin, min=vmin, max=np.min(y) + 0.03)
-        p.add('offset', value=0, vary=offset_on, min=0, max=dv, brute_step=dv / 20)
         p.add('t0', value=tscan / 5, min=tmin, max=tmax, brute_step=tscan / 20)
         p.add('dt', value=0, min=0, max=tscan, brute_step=tscan / 5)
-        p.add('tau', value=1, min=0, max=60, brute_step=10)
+        if offset_on == False:
+            p.add('offset', value=0, vary=offset_on, min=0, max=dv, brute_step=dv / 20)
+            p.add('tau', value=1, min=0, max=30, brute_step=5)
+            mi = minimize(loading_residual, p, args=(x,), kws={'data': y}, method='powell')
+            mi = minimize(loading_residual, mi.params, args=(x,), kws={'data': y}, method='leastsq')
+        else:
+            p.add('offset', value=0, vary=offset_on, min=0.01, max=dv, brute_step=dv / 20)
+            p.add('tau', value=1, min=0, max=60, brute_step=100)
+            mi = minimize(loading_residual, p, args=(x,), kws={'data': y}, method='powell')
 
-        mi = minimize(loading_residual, p, args=(x,), kws={'data': y}, method='powell')
-        #         mi = minimize(loading_residual, mi.params, args=(x,), kws={'data': y}, method='leastsq')
         dfs[i]['best fit'] = loading_residual(mi.params, x)
-        #         dfs[i]['init fit'] = loading_residual(mi.init_values, x)
+        # dfs[i]['init fit'] = loading_residual(mi.init_values, x)
 
         # storing fit results
         fit_data['amp'].append(mi.params['v1'].value - mi.params['v2'].value)
+        if mi.params['v1'].stderr is None:
+            fit_data['amp_err'].append(0)
+        else:
+            fit_data['amp_err'].append(np.sqrt(mi.params['v1'].stderr ** 2 + mi.params['v2'].stderr ** 2))
         fit_data['tau'].append(mi.params['tau'].value)
+        fit_data['tau_err'].append(mi.params['tau'].stderr)
         fit_data['offset'].append(mi.params['offset'].value)
+        fit_data['offset_err'].append(mi.params['offset'].stderr)
         fit_data['redchi'].append(mi.redchi)
 
     fit_df = pd.DataFrame(data=fit_data)
