@@ -1,6 +1,7 @@
 from lmfit import Parameters, fit_report, minimize
 import pandas as pd
 import numpy as np
+from lib.filter_data import filter_zoomed_spectroscopy
 
 
 def loading_residual(pars, x, data=None):
@@ -63,4 +64,9 @@ def fit_loading_dfs(dfs, offset_on=False):
 
     fit_df = pd.DataFrame(data=fit_data)
     fit_df = fit_df.set_index('file', drop=True).sort_index(level=0)
+    return dfs, fit_df
+
+
+def fit_spectroscopy_dfs(dfs):
+    fit_df = []
     return dfs, fit_df
