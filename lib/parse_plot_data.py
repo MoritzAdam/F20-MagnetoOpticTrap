@@ -3,6 +3,7 @@ import pandas as pd
 import os
 from math import ceil
 import lib.constants as c
+from lib.util import get_nearest
 
 
 def get_txt_csv(path):
@@ -60,7 +61,8 @@ def plot_dfs_with_fits(dfs):
     return fig, axes
 
 
-def plot_dfs_spectroscopy(dfs, max_column_number, plot_PDH_out = True, subplot_title_addition='', global_title='', emphasize=None):
+def plot_dfs_spectroscopy(dfs, max_column_number, plot_PDH_out = True,
+                          subplot_title_addition='', global_title='', emphasize=None):
     plot_columns = ceil(len(dfs)/max_column_number)
     fig, axis = plt.subplots(plot_columns, max_column_number,
                              figsize=(15, plot_columns*2), facecolor='w', edgecolor='k')
@@ -113,7 +115,3 @@ def txt_title(file_name):
     else:
         return r'$^{85}Rb \ and \ ^{87}Rb \ spectrum$'
 
-
-def get_nearest(df_series, vals_to_search):
-    index = df_series.index.get_loc(vals_to_search, "nearest")
-    return df_series.iloc[index]

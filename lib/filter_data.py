@@ -6,7 +6,7 @@ import numpy as np
 
 def filter_loading(dfs, rolling=1):
     '''
-    # 2 - Filtering values that are equal to the minimum value
+    Filtering values that are equal to the minimum value
     '''
 
     for i, df in enumerate(dfs):
@@ -14,13 +14,26 @@ def filter_loading(dfs, rolling=1):
     return dfs
 
 
-def filter_zoomed_spectroscopy(dfs):
+def filter_zoomed_spectroscopy(dfs, return_zoomed=False, return_entire=True):
+    '''
+    :param dfs: list of pandas dataframe objects
+    :param return_zoomed: bool; if false all 'zoomed' dfs will be filtered, if true only zoomed dfs will be returned
+    :param return_entire: bool; if true, df for entire spectrum will be returned
+    :return: list of pandas dataframe objects
+    '''
     filtered_dfs = []
     for i, df in enumerate(dfs):
         df, file_name = df
         # df.index,df.values[:,1]
-        if not file_name[5:] == 'zoom':
-            filtered_dfs.append((df, file_name))
+        if not return_zoomed:
+            if not file_name[5:] == 'zoom' and 'all' not in file_name:
+                filtered_dfs.append((df, file_name))
+        else:
+            if file_name[5:] == 'zoom':
+                filtered_dfs.append((df, file_name))
+        if return_entire:
+            if 'all' in file_name:
+                filtered_dfs.append((df, file_name))
     return filtered_dfs
 
 
