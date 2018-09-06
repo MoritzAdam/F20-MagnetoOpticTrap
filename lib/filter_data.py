@@ -37,7 +37,7 @@ def filter_zoomed_spectroscopy(dfs, return_zoomed=False, return_entire=True):
     return filtered_dfs
 
 
-def calibrate_voltage_to_freq_scale(dfs, calibration_factor):
+def calibrate_voltage_to_freq_scale(dfs, calibration_factor, definition_zero):
     '''
     calibrates voltage axis with theoretical freq difference for the two 87Rb fine structure transitions
     changes df index from voltage to calibrated freq, drops voltage values
@@ -48,19 +48,18 @@ def calibrate_voltage_to_freq_scale(dfs, calibration_factor):
     calibrated_dfs = []
 
     for df in dfs:
-        if len(df) == 1:
-            calibrated_x = df.index * calibration_factor #np.random.randn(len(df.index))
-            df['Frequency [THz]'] = Series(calibrated_x, index=df.index)
-            df = df.reset_index(drop=True)
-            df = df.set_index('Frequency [THz]')
-            calibrated_dfs.append(df)
-        else:
+        if not len(df) == 1:
             df, file_name = df
-            calibrated_x = df.index * calibration_factor  # np.random.randn(len(df.index))
-            df['Frequency [THz]'] = Series(calibrated_x, index=df.index)
-            df = df.reset_index(drop=True)
-            df = df.set_index('Frequency [THz]')
+
+        calibrated_x = c.RB87_FREQ_SEP_THEORY_F1_F2 * (df.index - definition_zero) / calibration_factor
+        df['Frequency [THz]'] = Series(calibrated_x, index=df.index)
+        df = df.reset_index(drop=True)
+        df = df.set_index('Frequency [THz]')
+
+        if not len(df) == 1:
             calibrated_dfs.append((df, file_name))
+        else:
+            calibrated_dfs.append(df)
 
     return calibrated_dfs
 

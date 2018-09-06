@@ -1,9 +1,9 @@
-from lmfit import Parameters, fit_report, minimize
-from lmfit.models import Model
+from lmfit import Parameters, minimize
+from lmfit.models import Model, LinearModel, ExponentialModel
 import pandas as pd
 import matplotlib.pyplot as plt
 import numpy as np
-from lib.util import remove_nan_from_masked_column
+from lib.util import remove_nan_from_masked_column, get_nearest_index_in_array
 
 def loading_residual(pars, x, data=None):
     vals = pars.valuesdict()
@@ -80,79 +80,180 @@ def fit_loading_dfs(dfs, offset_on=False):
     return dfs, fit_df
 
 
-def fit_spectroscopy_entire_dfs(dfs):
-    fit_df = []
-    return dfs, fit_df
+def _initialize_fit_data_df(fct, dfs):
+    fit_params = {}
+    if fct == 'gaussian':
+        fit_params.update({
+            'file': [file_name for df, file_name in dfs],
+            'amp': [],
+            'amp_err': [],
+            'cen': [],
+            'cen_err': [],
+            'sig': [],
+            'sig_err': [],
+            'off': [],
+            'off_err': [],
+            'redchi': []
+        })
+
+    if fct == 'lorentzian':
+        fit_params.update({
+            'file': [file_name for df, file_name in dfs]
+        })
+
+    if fct == 'double_gaussian' or fct == 'poly_gaussian':
+        if fct == 'double_gaussian':
+            gauss_count = 2
+            lin_count = 1
+        else:
+            gauss_count = 4
+            lin_count = 2
+        for i in range(1, gauss_count + 1):
+            fit_params['gauss{}_amp'.format(i)] = []
+            fit_params['gauss{}_cen'.format(i)] = []
+            fit_params['gauss{}_sig'.format(i)] = []
+            fit_params['gauss{}_off'.format(i)] = []
+        for i in range(1, lin_count + 1):
+            fit_params['linear{}_intercept'.format(i)] = []
+            fit_params['linear{}_slope'.format(i)] = []
+        keys = list(fit_params.keys())
+        for key in keys:
+            fit_params[key + '_err'] = []
+        fit_params['file'] = [file_name for df, file_name in dfs],
+        fit_params['redchi'] = []
+
+    return fit_params
 
 
-def fit_spectroscopy_single_dfs(dfs, fct='gaussian', all_init_params=None):
+def fit_spectroscopy_dfs(dfs, fct='gaussian', all_init_params=None):
     fcts = {
         'gaussian': gaussian,
+        'double_gaussian': double_gaussian,
         'poly_gaussian': poly_gaussian,
         'lorentzian': lorentzian
     }
 
-    fit_data = {
-        'file': [file_name for df, file_name in dfs],
-        'amp': [],
-        'amp_err': [],
-        'cen': [],
-        'cen_err': [],
-        'sig': [],
-        'sig_err': [],
-        'off': [],
-        'off_err': [],
-        'redchi': [],
-    }
+    if fct not in fcts.keys():
+        raise UserWarning('unknown fit function')
 
+    fit_stat = _initialize_fit_data_df(fct, dfs)
     dfs_fitted = []
 
     for i, df in enumerate(dfs):
         df, file_name = df
-        x_init = df.index.values
-        y_init = df.values[:, 0]
-        plt.plot(x_init, y_init, 'b')
-        x_crop = x_init
+        x_crop = df.index.values
         y_crop = df.values[:, 2]
 
         x_crop, y_crop = remove_nan_from_masked_column(x_crop, y_crop)
 
-        model = Model(fcts[fct], independent_vars=['x'])
-        amp, cen, sig, off = all_init_params[i]
-        params = model.make_params(amp=amp, cen=cen, sig=sig, off=off)
+        model = _make_model(fcts[fct])
+        params = _get_init_params(fct, all_init_params, model, x_crop, y_crop, i)
+
         fit = model.fit(y_crop, x=x_crop, params=params, method='leastsq', nan_policy='propagate')
         print(fit.fit_report(min_correl=0.25))
 
-        amp, cen, sig, off = fit.best_values.values()
-        df['Best fit - Aux in [V]'] = gaussian(x_init, amp=amp, cen=cen, sig=sig, off=off)
+        fit_stat = _save_fit_params(fit, fit_stat)
+
+        df = _save_fit_in_df(df=df, fit=fit)
         dfs_fitted.append((df, file_name))
 
-        fit_params = fit.params
-        fit_data['redchi'].append(fit.redchi)
-        for key in fit_data.keys():
-            if not key[3:] == '_err' and not key == 'redchi' and not key == 'file':
-                fit_data[key].append(fit_params[key].value)
-                fit_data[key + '_err'].append(fit_params[key].stderr)
-
-        #plt.plot(x_crop, y_crop, 'r.')
-        #plt.plot(x_crop, fit.init_fit, 'g--')
-        #plt.plot(x_init, gaussian(x_init, amp=amp, cen=cen, sig=sig, off=off), 'y--')
-        #plt.show()
-
-    fit_df = pd.DataFrame(data=fit_data)
+    fit_df = pd.DataFrame(data=fit_stat)
     fit_df = fit_df.set_index('file', drop=True).sort_index(level=0)
-    print(fit_df)
 
     return dfs_fitted, fit_df
+
+
+def _get_init_params(fct, all_init_params, model, x_crop, y_crop, i):
+    if fct == 'gaussian':
+        if all_init_params and all_init_params[i] is not None:
+            amp, cen, sig, off = all_init_params[i]
+        else:
+            # guess initial params
+            amp = np.max(y_crop)
+            cen = x_crop[np.argmax(y_crop)]
+            off = np.max(x_crop)
+            sig = abs(cen - x_crop[get_nearest_index_in_array(y_crop, (amp - off) / 2)])
+        params = model.make_params(amp=amp, cen=cen, sig=sig, off=off)
+
+    if fct == 'double_gaussian':
+        if all_init_params and all_init_params[i] is not None:
+            gauss1_amp, gauss2_amp, gauss1_cen, gauss2_cen, \
+            gauss1_sig, gauss2_sig, gauss1_off, gauss2_off, \
+            linear1_intercept, linear1_slope = all_init_params[i]
+        else:
+            # guess initial params
+            raise UserWarning('please provide initial params; for poly_gaussian params guess is not yet implemented')
+        params = model.make_params(gauss1_amp=gauss1_amp, gauss2_amp=gauss2_amp,
+                                   gauss1_cen=gauss1_cen, gauss2_cen=gauss2_cen,
+                                   gauss1_sig=gauss1_sig, gauss2_sig=gauss2_sig,
+                                   gauss1_off=gauss1_off, gauss2_off=gauss2_off,
+                                   linear1_intercept=linear1_intercept, linear1_slope=linear1_slope)
+
+    if fct == 'poly_gaussian':
+        if all_init_params and all_init_params[i] is not None:
+            gauss1_amp, gauss2_amp, gauss3_amp, gauss4_amp, \
+            gauss1_cen, gauss2_cen, gauss3_cen, gauss4_cen, \
+            gauss1_sig, gauss2_sig, gauss3_sig, gauss4_sig, \
+            gauss1_off, gauss2_off, gauss3_off, gauss4_off,\
+            linear1_intercept, linear2_intercept,\
+            linear1_slope, linear2_slope = all_init_params[i]
+        else:
+            # guess initial params
+            raise UserWarning('please provide initial params; for poly_gaussian params guess is not yet implemented')
+        params = model.make_params(gauss1_amp=gauss1_amp, gauss2_amp=gauss2_amp, gauss3_amp=gauss3_amp, gauss4_amp=gauss4_amp,
+                                   gauss1_cen=gauss1_cen, gauss2_cen=gauss2_cen, gauss3_cen=gauss3_cen, gauss4_cen=gauss4_cen,
+                                   gauss1_sig=gauss1_sig, gauss2_sig=gauss2_sig, gauss3_sig=gauss3_sig, gauss4_sig=gauss4_sig,
+                                   gauss1_off=gauss1_off, gauss2_off=gauss2_off, gauss3_off=gauss3_off, gauss4_off=gauss4_off,
+                                   linear1_intercept=linear1_intercept, linear2_intercept=linear2_intercept,
+                                   linear1_slope=linear1_slope, linear2_slope=linear2_slope)
+    return params
+
+
+def _make_model(fct):
+    if not fct == poly_gaussian and not fct == double_gaussian:
+        return Model(fct, independent_vars=['x'])
+    else:
+        return fct()
 
 
 def gaussian(x, amp, cen, sig, off):
     return amp / (np.sqrt(2 * np.pi) * sig) * np.exp(-((x-cen) / sig)**2 / 2) + off
 
 
+def double_gaussian():
+    gauss1 = Model(gaussian, independent_vars=['x'], prefix='gauss1_')
+    gauss2 = Model(gaussian, independent_vars=['x'], prefix='gauss2_')
+    linear1 = LinearModel(independent_vars=['x'], prefix='linear1_')
+    model = gauss1 + linear1 + gauss2
+    return model
+
+
+def poly_gaussian():
+    gauss1 = Model(gaussian, independent_vars=['x'], prefix='gauss1_')
+    gauss2 = Model(gaussian, independent_vars=['x'], prefix='gauss2_')
+    gauss3 = Model(gaussian, independent_vars=['x'], prefix='gauss3_')
+    gauss4 = Model(gaussian, independent_vars=['x'], prefix='gauss4_')
+    linear1 = LinearModel(independent_vars=['x'], prefix='linear1_')
+    linear2 = LinearModel(independent_vars=['x'], prefix='linear2_')
+    model = gauss1 + gauss2 + linear1 + gauss3 + linear2 + gauss4
+    return model
+
+
 def lorentzian(x):
     return x
 
 
-def poly_gaussian(x):
-    return x
+def _save_fit_in_df(df, fit):
+    x_init = df.index.values
+    df['Best fit - Aux in [V]'] = fit.eval(x=x_init)
+    return df
+
+
+def _save_fit_params(fit, fit_data):
+    fit_params = fit.params
+    fit_data['redchi'].append(fit.redchi)
+    for key in fit_data.keys():
+        if not key[-4:] == '_err' and not key == 'redchi' and not key == 'file':
+            fit_data[key].append(fit_params[key].value)
+            fit_data[key + '_err'].append(fit_params[key].stderr)
+    return fit_data

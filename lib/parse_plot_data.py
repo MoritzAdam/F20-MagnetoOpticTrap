@@ -4,7 +4,7 @@ import pandas as pd
 import os
 from math import ceil
 import lib.constants as c
-from lib.util import get_nearest, remove_nan_from_masked_column
+from lib.util import get_nearest_in_dataframe, remove_nan_from_masked_column
 
 
 def get_txt_csv(path):
@@ -75,13 +75,13 @@ def plot_dfs_spectroscopy(dfs, max_column_number, plot_PDH_out = True, plot_fit=
 
     for i, df in enumerate(dfs):
         df, file_name = df
-        axis[i].plot(df.index, df.values[:, 0], '.', color='cornflowerblue', markersize=c.PLOT_MARKERSIZE)
+        axis[i].plot(df.index, df.values[:, 0], '.', color='steelblue', markersize=c.PLOT_MARKERSIZE)
 
         if emphasize is not None:
             for single_emphasize in emphasize:
                 lower, upper = single_emphasize
-                lower = get_nearest(df, lower)
-                upper = get_nearest(df, upper)
+                lower = get_nearest_in_dataframe(df, lower)
+                upper = get_nearest_in_dataframe(df, upper)
                 df_to_be_emphasized = df.loc[lower.name:upper.name]
                 axis[i].plot(df_to_be_emphasized.index, df_to_be_emphasized.values[:, 0], '.', color='orangered',
                              markersize=c.PLOT_MARKERSIZE)
