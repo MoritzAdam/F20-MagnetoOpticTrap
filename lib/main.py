@@ -3,47 +3,55 @@ import matplotlib.pyplot as plt
 import lib.constants as c
 from lib.util import mask_dfs, get_multiplet_separation, get_definition_zero, get_multiplet_df
 from lib.parse_plot_data import get_txt_csv, make_oscilloscope_df, \
-    make_spectroscopy_df, plot_dfs, plot_dfs_with_fits, \
+    make_spectroscopy_df, plot_dfs, \
     plot_dfs_spectroscopy
 from lib.filter_data import filter_loading, filter_zoomed_spectroscopy, \
-    calibrate_voltage_to_freq_scale
-from lib.fit_data import fit_loading_dfs, fit_spectroscopy_entire_dfs
-from lib.loading_analysis import loading_analysis
+    calibrate_voltage_to_freq_scale, filter_recapture
+from lib.analysis import loading_analysis, recapture_analysis
+from lib.fit_data import fit_loading_dfs
+from lib.analysis import loading_analysis, calculate_mean
 from lib.fit_data import fit_loading_dfs, fit_spectroscopy_dfs
 
 
 def main():
     # Loading rates
-    # 1 - Starting point
-    #dfs = make_oscilloscope_df(c.loading_path)
-    #fig, axes = plot_dfs(dfs)
-    #plt.show()
-#
-    ## 2 - Filtering values that are equal to the minimum value
-    #dfs = filter_loading(dfs, rolling=10)
-    #fig, axes = plot_dfs(dfs)
-    #plt.show()
-#
-    ## 3 - Fitting loading curves
-    #dfs_fit, fit_df = fit_loading_dfs(dfs, offset_on=False)
-    #fig, axes = plot_dfs_with_fits(dfs_fit)
-    #plt.show()
-#
-    ## 4 - Analysis of the loading curves
-    #fig, axes = loading_analysis(fit_df)
-    #plt.show()
-#
-    ## Release, Recapture
-    #dfs_rr = make_oscilloscope_df(c.temperature_path)
-    #fig, axes = plot_dfs(dfs_rr)
-    #plt.show()
-#
-    ## Fit of Release, Recapture
-    #dfs_fit_rr, fit_df_rr = fit_loading_dfs(dfs_rr, offset_on=True)
-    #fig, axes = plot_dfs_with_fits(dfs_fit_rr)
-    #plt.show()
-    #print(fit_df_rr)
+    plt_style = ['detuning = ', c.DETUNING_DICT, ' Mhz',  # Title, 1: start, 2: link of the dict, 3: end
+               'intensity [a.u.]',  # ylabel
+               'time [s]']  # xlabel
+    dfs = make_oscilloscope_df(c.loading_path)
+    plot_dfs(dfs, plt_style)
+    plt.show()
 
+    # Filtering values that are equal to the minimum value and Fitting loading curves
+    dfs = filter_loading(dfs, rolling=10)
+    dfs_fit, fit_df = fit_loading_dfs(dfs, offset_on=False)
+    plot_dfs(dfs_fit, plt_style)
+    plt.show()
+
+    # Analysis of the loading curves
+    loading_analysis(fit_df)
+    plt.show()
+
+    # Release, Recapture
+    plt_style_rr = ['down time = ', c.DURATION_DICT, ' ms',  # Title, 1: start, 2: link of the dict, 3: end
+               'intensity [a.u.]',  # ylabel
+               'time [s]']  # xlabel
+    dfs_rr = make_oscilloscope_df(c.temperature_path)
+    plot_dfs(dfs_rr, plt_style_rr)
+    plt.show()
+
+    # Filtering Release, Recapture data and Fit
+    dfs_rr = filter_recapture(dfs_rr)
+    dfs_fit_rr, fit_df_rr = fit_loading_dfs(dfs_rr, offset_on=True)
+    mean = calculate_mean(fit_df_rr, dfs_rr)
+    plot_dfs(dfs_fit_rr, plt_style_rr, recapture=mean)
+    plt.show()
+
+    # Analysis of the recapture experiment
+    recapture_analysis(mean)
+    plt.show()
+
+"""
     # Loading spectroscopy data
     dfs_spec = make_spectroscopy_df(c.spectroscopy_path)
     #fig, axes = plot_dfs_spectroscopy(dfs_spec, max_column_number=3, plot_PDH_out=True, plot_fit=False)
@@ -90,6 +98,7 @@ def main():
     fig, axes = plot_dfs_spectroscopy(dfs_spec, max_column_number=2, plot_PDH_out=False, plot_fit=True)
     plt.show()
     print(fit_df_spec)
+"""
 
 if __name__ == '__main__':
     main()

@@ -1,14 +1,9 @@
-from lib.parse_plot_data import make_spectroscopy_df
 import lib.constants as c
 from pandas import Series
-import numpy as np
-
+from lib.parse_plot_data import make_spectroscopy_df
 
 def filter_loading(dfs, rolling=1):
-    '''
-    Filtering values that are equal to the minimum value
-    '''
-
+    # Filtering values that are equal to the minimum value
     for i, df in enumerate(dfs):
         dfs[i] = df[df != df.min()].rolling(window=rolling, center=True).mean().dropna()
     return dfs
@@ -67,3 +62,13 @@ def calibrate_voltage_to_freq_scale(dfs, calibration_factor, definition_zero):
 if __name__ == '__main__':
     dfs_spec = make_spectroscopy_df(c.spectroscopy_path)
     dfs_spec = filter_zoomed_spectroscopy(dfs_spec)
+
+
+def filter_recapture(dfs):
+    upperlimits = [None, None, 0.006, 0.008, None, None, 0.016, 0.016, 0.016, None, None, None, None, None, 0.03, 0.03,
+                   0.03, 0.03, 0.03, 0.035, None, None, None, None, None, 0.06, 0.08, 0.12, 0.13, 0.14, 0.14]
+    for i, df in enumerate(dfs):
+        if upperlimits[i] is not None:
+            limit = df.index.get_loc(upperlimits[i], method='nearest')
+            dfs[i] = df.iloc[:limit]
+    return dfs

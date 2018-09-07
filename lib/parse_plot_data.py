@@ -2,10 +2,17 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import os
-from math import ceil
 import lib.constants as c
+from math import ceil
 from lib.util import get_nearest_in_dataframe, remove_nan_from_masked_column
 
+def import_dict(str):
+    det = {}
+    with open('../data/'+str) as f:
+        for line in f:
+            (key, val) = line.split()
+            det[key] = float(val)
+    return det
 
 def get_txt_csv(path):
     files = os.listdir(path)
@@ -40,26 +47,26 @@ def make_spectroscopy_df(path):
     return dfs
 
 
-def plot_dfs(dfs):
-    plot_columns = ceil(len(dfs) / 4)
-    fig, axis = plt.subplots(plot_columns, 4, figsize=(15, plot_columns * 2), facecolor='w', edgecolor='k')
-
-    axis = axis.ravel()
-    for i, df in enumerate(dfs):
-        axis[i].plot(df.index, df.values, '.', markersize=c.PLOT_MARKERSIZE)
-        axis[i].set_title(df.columns[0])
-    return fig, axis
-# TODO: move mask function out of fit function, adding additional column to df; call mask function in main, call fit function with dfs with additional mask columns, returning df with additional fit column; call plot function with df including masked and fit columns
-
-def plot_dfs_with_fits(dfs):
+def plot_dfs(dfs, style, recapture=None):
     plot_columns = ceil(len(dfs) / 4)
     fig, axes = plt.subplots(plot_columns, 4, figsize=(15, plot_columns * 2), facecolor='w', edgecolor='k')
+    dict = import_dict(style[1])
     axes = axes.ravel()
     for i, df in enumerate(dfs):
-        axes[i].plot(df.index, df.iloc[:, 0].values, '.', markersize=c.PLOT_MARKERSIZE)
+        axes[i].plot(df.index, df.iloc[:, 0].values, '.', markersize=c.PLOT_MARKERSIZE, color=c.BLUE)
         #         axes[i].plot(df.index,df['init fit'].values, 'k--')
-        axes[i].plot(df.index, df['best fit'].values, 'r-', markersize=c.PLOT_MARKERSIZE)
-    return fig, axes
+        if df.get('best fit') is not None:
+            axes[i].plot(df.index, df['best fit'].values, 'r-', markersize=c.PLOT_MARKERSIZE, color=c.RED)
+        if recapture is not None:
+            axes[i].plot(df.index, recapture[0][i]*np.ones(len(df.index)), '--', color=c.GREEN)
+            axes[i].plot(df.index, recapture[1][i]*np.ones(len(df.index)), '--', color=c.GREEN)
+        axes[i].set_title(style[0]+str(dict[df.columns[0]])+style[2], fontweight='semibold', size='10')
+    for i in range(0, plot_columns):
+        axes[i*4].set_ylabel(style[3], style='italic')
+    for i in range(4*plot_columns-4, 4*plot_columns):
+        axes[i].set_xlabel(style[4], style='italic')
+    for i in range(len(dfs),4*plot_columns):
+        axes[i].set_visible(False)
 
 
 def plot_dfs_spectroscopy(dfs, max_column_number, plot_PDH_out = True, plot_fit=False,

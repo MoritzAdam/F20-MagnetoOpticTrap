@@ -1,9 +1,10 @@
-from lmfit import Parameters, minimize
-from lmfit.models import Model, LinearModel, ExponentialModel
 import pandas as pd
 import matplotlib.pyplot as plt
 import numpy as np
 from lib.util import remove_nan_from_masked_column, get_nearest_index_in_array
+from lmfit import Parameters, minimize
+from lmfit.models import Model, LinearModel, ExponentialModel
+
 
 def loading_residual(pars, x, data=None):
     vals = pars.valuesdict()
@@ -31,6 +32,8 @@ def fit_loading_dfs(dfs, offset_on=False):
         'offset_err': [],
         'tau': [],
         'tau_err': [],
+        't0': [],
+        'dt': [],
         'redchi': [],
     }
     for i, df in enumerate(dfs):
@@ -73,6 +76,8 @@ def fit_loading_dfs(dfs, offset_on=False):
         fit_data['tau_err'].append(mi.params['tau'].stderr)
         fit_data['offset'].append(mi.params['offset'].value)
         fit_data['offset_err'].append(mi.params['offset'].stderr)
+        fit_data['t0'].append(mi.params['t0'].value)
+        fit_data['dt'].append(mi.params['dt'].value)
         fit_data['redchi'].append(mi.redchi)
 
     fit_df = pd.DataFrame(data=fit_data)

@@ -1,7 +1,7 @@
 import numpy as np
 import pandas as pd
-from math import isnan
 import lib.constants as c
+from math import isnan
 
 
 def get_nearest_in_dataframe(df_series, vals_to_search):
