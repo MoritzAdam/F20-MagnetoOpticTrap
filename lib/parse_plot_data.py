@@ -67,10 +67,13 @@ def plot_dfs(dfs, style, recapture=None):
         axes[i].set_xlabel(style[4], style='italic')
     for i in range(len(dfs),4*plot_columns):
         axes[i].set_visible(False)
+    plt.tight_layout()
 
 
-def plot_dfs_spectroscopy(dfs, max_column_number, plot_PDH_out = True, plot_fit=False,
+def plot_dfs_spectroscopy(dfs, max_column_number, plot_initial=True, plot_PDH_out=False, plot_fit=False,
+                          plot_deriv=False, plot_data_with_subtracted_fit=False, plot_hyperfine_fit=False,
                           subplot_title_addition='', global_title='', emphasize=None):
+
     plot_columns = ceil(len(dfs)/max_column_number)
     fig, axis = plt.subplots(plot_columns, max_column_number,
                              figsize=(15, plot_columns*2), facecolor='w', edgecolor='k')
@@ -82,7 +85,9 @@ def plot_dfs_spectroscopy(dfs, max_column_number, plot_PDH_out = True, plot_fit=
 
     for i, df in enumerate(dfs):
         df, file_name = df
-        axis[i].plot(df.index, df.values[:, 0], '.', color='steelblue', markersize=c.PLOT_MARKERSIZE)
+
+        if plot_initial:
+            axis[i].plot(df.index, df.values[:, 0], '.', color='steelblue', markersize=c.PLOT_MARKERSIZE)
 
         if emphasize is not None:
             for single_emphasize in emphasize:
@@ -90,16 +95,37 @@ def plot_dfs_spectroscopy(dfs, max_column_number, plot_PDH_out = True, plot_fit=
                 lower = get_nearest_in_dataframe(df, lower)
                 upper = get_nearest_in_dataframe(df, upper)
                 df_to_be_emphasized = df.loc[lower.name:upper.name]
-                axis[i].plot(df_to_be_emphasized.index, df_to_be_emphasized.values[:, 0], '.', color='orangered',
+                axis[i].plot(df_to_be_emphasized.index, df_to_be_emphasized.values[:, 'Aux in [V]'], '.', color='orangered',
                              markersize=c.PLOT_MARKERSIZE)
 
         if plot_PDH_out:
             add_axis = axis[i].twinx()
-            add_axis.plot(df.index, df.values[:, 1], '.', color='grey', alpha=0.3, markersize=c.PLOT_MARKERSIZE)
+            add_axis.plot(df.index, df.loc[:, 'PDH out [a.u.]'].values, '.', color='grey', alpha=0.3, markersize=c.PLOT_MARKERSIZE)
 
         if plot_fit:
-            axis[i].plot(df.index, df.values[:, 2], '-', color='black')
-            axis[i].plot(df.index, df.values[:, 4], '-', color='r', alpha=0.7)
+            axis[i].plot(df.index, df.loc[:, 'Masked - Aux in [V]'].values, '.', color='black', markersize=c.PLOT_MARKERSIZE)
+            axis[i].plot(df.index, df.loc[:, 'Best fit - Aux in [V]'].values, '-', color='r', alpha=0.7, markersize=c.PLOT_MARKERSIZE)
+
+        if plot_data_with_subtracted_fit:
+            add_axis = axis[i].twinx()
+            add_axis.plot(df.index[c.GLOBAL_ZOOM_FOR_HYPERFINE[i][0]:c.GLOBAL_ZOOM_FOR_HYPERFINE[i][1]],
+                          df.loc[:, 'Aux in minus Best fit [V]']
+                          .values[c.GLOBAL_ZOOM_FOR_HYPERFINE[i][0]:c.GLOBAL_ZOOM_FOR_HYPERFINE[i][1]],
+                          '.', color='limegreen', markersize=c.PLOT_MARKERSIZE)
+
+        if plot_hyperfine_fit:
+            if not plot_data_with_subtracted_fit:
+                raise UserWarning('plot_data_with_subtracted_fit has to be True when plot_hyperfine_fit is True')
+            add_axis.plot(df.index[c.GLOBAL_ZOOM_FOR_HYPERFINE[i][0]:c.GLOBAL_ZOOM_FOR_HYPERFINE[i][1]],
+                          df.loc[:, 'Masked - Aux in minus Best fit [V]']
+                          .values[c.GLOBAL_ZOOM_FOR_HYPERFINE[i][0]:c.GLOBAL_ZOOM_FOR_HYPERFINE[i][1]],
+                          '.', color='black', markersize=c.PLOT_MARKERSIZE)
+
+        if plot_deriv:
+            add_axis = axis[i].twinx()
+            add_axis.plot(df.index[c.GLOBAL_ZOOM_FOR_HYPERFINE[i][0] + 1:c.GLOBAL_ZOOM_FOR_HYPERFINE[i][1]],
+                          np.diff(np.asarray(df.loc[:, 'Aux in [V]'].values))[c.GLOBAL_ZOOM_FOR_HYPERFINE[i][0]:c.GLOBAL_ZOOM_FOR_HYPERFINE[i][1]],
+                          '-', color='limegreen', alpha=0.4, markersize=c.PLOT_MARKERSIZE)
 
         axis[i].set_title(txt_title(file_name) + subplot_title_addition, fontsize=10)
     if not max_column_number == 1:

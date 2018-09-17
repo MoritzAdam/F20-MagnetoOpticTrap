@@ -103,7 +103,14 @@ def _initialize_fit_data_df(fct, dfs):
 
     if fct == 'lorentzian':
         fit_params.update({
-            'file': [file_name for df, file_name in dfs]
+            'file': [file_name for df, file_name in dfs],
+            'cen': [],
+            'cen_err': [],
+            'gamma': [],
+            'gamma_err': [],
+            'off': [],
+            'off_err': [],
+            'redchi': []
         })
 
     if fct == 'double_gaussian' or fct == 'poly_gaussian':
@@ -130,7 +137,7 @@ def _initialize_fit_data_df(fct, dfs):
     return fit_params
 
 
-def fit_spectroscopy_dfs(dfs, fct='gaussian', all_init_params=None):
+def fit_spectroscopy_dfs(dfs, fct='gaussian', all_init_params=None, column_to_fit='Aux in [V]'):
     fcts = {
         'gaussian': gaussian,
         'double_gaussian': double_gaussian,
@@ -147,7 +154,7 @@ def fit_spectroscopy_dfs(dfs, fct='gaussian', all_init_params=None):
     for i, df in enumerate(dfs):
         df, file_name = df
         x_crop = df.index.values
-        y_crop = df.values[:, 2]
+        y_crop = df.loc[:, 'Masked - ' + column_to_fit].values
 
         x_crop, y_crop = remove_nan_from_masked_column(x_crop, y_crop)
 
@@ -159,7 +166,7 @@ def fit_spectroscopy_dfs(dfs, fct='gaussian', all_init_params=None):
 
         fit_stat = _save_fit_params(fit, fit_stat)
 
-        df = _save_fit_in_df(df=df, fit=fit)
+        df = _save_fit_in_df(df=df, fit=fit, column_to_fit=column_to_fit)
         dfs_fitted.append((df, file_name))
 
     fit_df = pd.DataFrame(data=fit_stat)
@@ -179,6 +186,14 @@ def _get_init_params(fct, all_init_params, model, x_crop, y_crop, i):
             off = np.max(x_crop)
             sig = abs(cen - x_crop[get_nearest_index_in_array(y_crop, (amp - off) / 2)])
         params = model.make_params(amp=amp, cen=cen, sig=sig, off=off)
+
+    if fct == 'lorentzian':
+        if all_init_params and all_init_params[i] is not None:
+            cen, gamma, off = all_init_params[i]
+        else:
+            # guess initial params
+            raise UserWarning('please provide initial params; for poly_gaussian params guess is not yet implemented')
+        params = model.make_params(cen=cen, gamma=gamma, off=off)
 
     if fct == 'double_gaussian':
         if all_init_params and all_init_params[i] is not None:
@@ -244,13 +259,13 @@ def poly_gaussian():
     return model
 
 
-def lorentzian(x):
-    return x
+def lorentzian(x, cen, gamma, off):
+    return 1 / (np.pi * gamma) * 1 / (1 + (x-cen)**2 / gamma**2) + off
 
 
-def _save_fit_in_df(df, fit):
+def _save_fit_in_df(df, fit, column_to_fit):
     x_init = df.index.values
-    df['Best fit - Aux in [V]'] = fit.eval(x=x_init)
+    df['Best fit - ' + column_to_fit] = fit.eval(x=x_init)
     return df
 
 

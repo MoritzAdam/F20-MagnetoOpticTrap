@@ -15,11 +15,20 @@ def get_nearest_index_in_array(array, value):
     return idx
 
 
-def mask_dfs(dfs, all_masks=None):
+def mask_dfs(dfs, all_masks=None, column_to_be_masked='Aux in [V]', masked_column_name_ext=''):
     new_dfs = []
     for i, df in enumerate(dfs):
         df, file_name = df
-        df_masked = df
+
+        if 'Masked - ' + column_to_be_masked in df.columns.values:
+            df = df.drop('Masked - ' + column_to_be_masked, 1, inplace=True)
+
+        df_masked = df.copy()
+        for col in df_masked.columns.values:
+            if col == column_to_be_masked:
+                continue
+            else:
+                df_masked.drop(col, 1, inplace=True)
 
         if all_masks is not None:
             if not len(dfs) == len(all_masks):
@@ -37,9 +46,9 @@ def mask_dfs(dfs, all_masks=None):
                     upper_ = upper_.loc[upper.name:]
                     df_masked = pd.concat([lower_, upper_], axis=0, verify_integrity=False)
 
-        df_masked.columns = ['Masked - Aux in [V]', 'Masked - PDH out [a.u.]']
+        df_masked.columns = ['Masked - ' + column_to_be_masked + masked_column_name_ext]
         df = pd.concat([df, df_masked], axis=1)
-        new_dfs.append((df,file_name))
+        new_dfs.append((df, file_name))
     return new_dfs
 
 
@@ -55,6 +64,7 @@ def remove_nan_from_masked_column(index, col):
 
 def get_multiplet_separation(fit_df, left, right):
     # Use left=1, right=4 for calibration
+    # TODO: error sig
     separation = fit_df['gauss{}_cen'.format(right)].values[0] - fit_df['gauss{}_cen'.format(left)].values[0]
     error = np.sqrt(fit_df['gauss{}_cen_err'.format(right)].values[0]**2
                     + fit_df['gauss{}_cen_err'.format(left)].values[0]**2)

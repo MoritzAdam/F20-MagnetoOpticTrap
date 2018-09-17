@@ -1,4 +1,5 @@
 import numpy as np
+import os
 import matplotlib.pyplot as plt
 import lib.constants as c
 from lib.util import mask_dfs, get_multiplet_separation, get_definition_zero, get_multiplet_df
@@ -6,14 +7,15 @@ from lib.parse_plot_data import get_txt_csv, make_oscilloscope_df, \
     make_spectroscopy_df, plot_dfs, \
     plot_dfs_spectroscopy
 from lib.filter_data import filter_loading, filter_zoomed_spectroscopy, \
-    calibrate_voltage_to_freq_scale, filter_recapture
+    calibrate_voltage_to_freq_scale, filter_recapture, subtract_gaussian_fit_from_finestructure
 from lib.analysis import loading_analysis, recapture_analysis
 from lib.fit_data import fit_loading_dfs
-from lib.analysis import loading_analysis, calculate_mean
+from lib.analysis import loading_analysis, calculate_mean, get_temp_from_finestructure_fits
 from lib.fit_data import fit_loading_dfs, fit_spectroscopy_dfs
 
 
 def main():
+    """
     # Loading rates
     plt_style = ['detuning = ', c.DETUNING_DICT, ' Mhz',  # Title, 1: start, 2: link of the dict, 3: end
                'intensity [a.u.]',  # ylabel
@@ -50,8 +52,8 @@ def main():
     # Analysis of the recapture experiment
     recapture_analysis(mean)
     plt.show()
+    """
 
-"""
     # Loading spectroscopy data
     dfs_spec = make_spectroscopy_df(c.spectroscopy_path)
     #fig, axes = plot_dfs_spectroscopy(dfs_spec, max_column_number=3, plot_PDH_out=True, plot_fit=False)
@@ -59,7 +61,7 @@ def main():
 
     # Calibrating the frequency scale
     dfs_compl_spec = dfs_spec[8:]
-    dfs_compl_spec = mask_dfs(dfs_compl_spec, all_masks=[[(-0.66, -0.61), (-0.41, -0.375),
+    dfs_compl_spec = mask_dfs(dfs_compl_spec, all_masks=[[(-0.66, -0.60), (-0.41, -0.35),
                                                           (0.18, 0.23), (0.66, 0.7)]])
 
     params = [(-0.2, -0.4, -0.3, -0.1,
@@ -73,21 +75,31 @@ def main():
                                                              fct='poly_gaussian',
                                                              all_init_params=params)
 
-    fig, axes = plot_dfs_spectroscopy(dfs_compl_spec, max_column_number=1, plot_PDH_out=False, plot_fit=True)
+    fig, axes = plot_dfs_spectroscopy(dfs_compl_spec,
+                                      max_column_number=1,
+                                      plot_PDH_out=False,
+                                      plot_fit=True)
     plt.show()
 
-    calibration_factor, calibration_factor_err = get_multiplet_separation(fit_df_compl_spec, 1, 4)
+    calibration_factor, calibration_factor_err = get_multiplet_separation(fit_df_compl_spec,
+                                                                          left=1,
+                                                                          right=4)
     definition_zero, definition_zero_error = get_definition_zero(fit_df_compl_spec)
     print('calibration factor: {}, zero definition: {}'.format(calibration_factor, definition_zero))
 
     df_multiplet_sep = get_multiplet_df(fit_df_compl_spec)
+    #df_multiplet_sep.to_excel(c.save_multiplet_path)
 
     # Gaussian fits of the transitions (unzoomed)
     dfs_spec = dfs_spec
-    dfs_spec = filter_zoomed_spectroscopy(dfs_spec, return_zoomed=False, return_entire=False)
+    dfs_spec = filter_zoomed_spectroscopy(dfs_spec,
+                                          return_zoomed=False,
+                                          return_entire=False)
+
     dfs_spec = calibrate_voltage_to_freq_scale(dfs_spec,
                                                calibration_factor=calibration_factor,
                                                definition_zero=definition_zero)
+
     dfs_spec = mask_dfs(dfs_spec, all_masks=[[(0., 3.25), (3.85, 4.05)],
                                              [(1.25, 1.7), (2.05, 2.3)],
                                              [(6.05, 6.45)],
@@ -95,10 +107,33 @@ def main():
 
     dfs_spec, fit_df_spec = fit_spectroscopy_dfs(dfs_spec, fct='gaussian')
 
-    fig, axes = plot_dfs_spectroscopy(dfs_spec, max_column_number=2, plot_PDH_out=False, plot_fit=True)
+    fig, axes = plot_dfs_spectroscopy(dfs_spec,
+                                      max_column_number=2,
+                                      plot_PDH_out=False,
+                                      plot_fit=True)
     plt.show()
+
+    fit_df_spec = get_temp_from_finestructure_fits(fit_df_spec)
     print(fit_df_spec)
-"""
+    #fit_df_spec.to_excel(c.save_finestructure_path)
+
+    # Fit hyperfine structure to determine linewidth
+    dfs_spec = subtract_gaussian_fit_from_finestructure(dfs_spec)
+    dfs_spec = mask_dfs(dfs_spec, all_masks=[[],
+                                             [],
+                                             [],
+                                             []],
+                        column_to_be_masked='Aux in minus Best fit [V]')
+
+    fig, axes = plot_dfs_spectroscopy(dfs_spec,
+                                      max_column_number=2,
+                                      plot_initial=False,
+                                      plot_PDH_out=False,
+                                      plot_fit=False,
+                                      plot_deriv=True,
+                                      plot_data_with_subtracted_fit=True,
+                                      plot_hyperfine_fit=True)
+    plt.show()
 
 if __name__ == '__main__':
     main()

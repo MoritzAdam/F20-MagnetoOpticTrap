@@ -59,9 +59,21 @@ def calibrate_voltage_to_freq_scale(dfs, calibration_factor, definition_zero):
     return calibrated_dfs
 
 
-if __name__ == '__main__':
-    dfs_spec = make_spectroscopy_df(c.spectroscopy_path)
-    dfs_spec = filter_zoomed_spectroscopy(dfs_spec)
+def subtract_gaussian_fit_from_finestructure(dfs):
+    filtered_dfs = []
+    for df in dfs:
+        if not len(df) == 1:
+            df, file_name = df
+
+        df['Aux in minus Best fit [V]'] = Series(data=df['Aux in [V]'].values - df['Best fit - Aux in [V]'].values,
+                                                           index=df.index)
+
+        if not len(df) == 1:
+            filtered_dfs.append((df, file_name))
+        else:
+            filtered_dfs.append(df)
+
+    return dfs
 
 
 def filter_recapture(dfs):
@@ -72,3 +84,8 @@ def filter_recapture(dfs):
             limit = df.index.get_loc(upperlimits[i], method='nearest')
             dfs[i] = df.iloc[:limit]
     return dfs
+
+
+if __name__ == '__main__':
+    dfs_spec = make_spectroscopy_df(c.spectroscopy_path)
+    dfs_spec = filter_zoomed_spectroscopy(dfs_spec)
