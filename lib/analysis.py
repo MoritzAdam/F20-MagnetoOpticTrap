@@ -1,5 +1,6 @@
 import matplotlib.pyplot as plt
 import numpy as np
+import pandas as pd
 import scipy.constants as const
 import lib.constants as c
 from lib.parse_plot_data import import_dict
@@ -98,3 +99,26 @@ def recapture_analysis(mean):
     plt.xlabel('down time [ms]', style='italic')
     plt.ylabel('$N/N_0$', style='italic')
     plt.text(68, 0.85, 'temperature = '+str(int(round((temp*1e6),0)))+'$ \pm $'+str(int(round(err_temp*1e6,0)))+' $\mu$K')
+
+
+def get_temp_from_finestructure_fits(fit_data):
+    sig = fit_data[['sig', 'sig_err']]
+    temps = {}
+
+    for index, row in sig.iterrows():
+        if index[:2] == '85':
+            mass = c.RB85_MASS
+        else:
+            mass = c.RB87_MASS
+
+        # TODO: nu_0 and temp error
+        temp = row['sig']**2 * mass * c.C**2 * (1/c.K_BOLTZMANN)
+        temp_err = temp * (np.sqrt(2) * row['sig_err'] / row['sig'])
+        temps[index] = [temp, temp_err]
+
+    temp = pd.DataFrame.from_dict(data=temps, orient='index',
+                                  columns=['Temperature of stomic sample [K]',
+                                           'Temperature error [K]'])
+
+    fit_data = pd.concat([fit_data, temp], axis=1)
+    return fit_data
