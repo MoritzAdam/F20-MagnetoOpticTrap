@@ -15,44 +15,84 @@ def get_nearest_index_in_array(array, value):
     return idx
 
 
-def mask_dfs(dfs, all_masks=None, column_to_be_masked='Aux in [V]', masked_column_name_ext=''):
+def mask_dfs(dfs, all_masks=None, column_to_be_masked='Aux in [V]', split_masks=False):
     new_dfs = []
     for i, df in enumerate(dfs):
         df, file_name = df
-
-        if 'Masked - ' + column_to_be_masked in df.columns.values:
-            df = df.drop('Masked - ' + column_to_be_masked, 1, inplace=True)
-
-        df_masked = df.copy()
-        for col in df_masked.columns.values:
-            if col == column_to_be_masked:
-                continue
-            else:
-                df_masked.drop(col, 1, inplace=True)
 
         if all_masks is not None:
             if not len(dfs) == len(all_masks):
                 raise UserWarning('There is no mask provided for all dataframes')
 
-            masks = all_masks[i]
+        if all_masks[i] is not None:
+            if split_masks:
+                df = _splitted_masks(df, masks=all_masks[i], column_to_be_masked=column_to_be_masked)
+            else:
+                df = _multi_masks(df, masks=all_masks[i], column_to_be_masked=column_to_be_masked)
 
-            if masks is not None:
-                for mask in masks:
-                    lower, upper = mask
-                    lower = get_nearest_in_dataframe(df_masked, lower)
-                    upper = get_nearest_in_dataframe(df_masked, upper)
-                    lower_ = df_masked.loc[:lower.name]
-                    upper_ = df_masked.loc[lower.name:]
-                    upper_ = upper_.loc[upper.name:]
-                    df_masked = pd.concat([lower_, upper_], axis=0, verify_integrity=False)
-
-        df_masked.columns = ['Masked - ' + column_to_be_masked + masked_column_name_ext]
-        df = pd.concat([df, df_masked], axis=1)
         new_dfs.append((df, file_name))
     return new_dfs
 
 
-def remove_nan_from_masked_column(index, col):
+def _multi_masks(df, masks, column_to_be_masked='Aux in [V]'):
+    if c.MASK_NAME + column_to_be_masked in df.columns.values:
+        df = df.drop(c.MASK_NAME + column_to_be_masked, 1, inplace=True)
+
+    df_masked = df.copy()
+    for col in df_masked.columns.values:
+        if col == column_to_be_masked:
+            continue
+        else:
+            df_masked.drop(col, 1, inplace=True)
+
+    for mask in masks:
+        df_masked = _make_excluding_mask(df_masked=df_masked, mask=mask)
+
+    df_masked.columns = ['Masked - ' + column_to_be_masked]
+    return pd.concat([df, df_masked], axis=1)
+
+
+def _splitted_masks(df, masks, column_to_be_masked='Aux in [V]'):
+    for i in range(len(masks)):
+        if c.MASK_NAME + column_to_be_masked + '-' + str(i) in df.columns.values:
+            df = df.drop(c.MASK_NAME + column_to_be_masked + '-' + str(i), 1, inplace=True)
+
+    df_masked = df.copy()
+    count = 0
+
+    for col in df_masked.columns.values:
+        if col == column_to_be_masked:
+            continue
+        else:
+            df_masked.drop(col, 1, inplace=True)
+
+    for mask in masks:
+        df_single_masked = _make_including_mask(df_masked=df_masked, mask=mask)
+        df_single_masked.columns = ['Masked - ' + column_to_be_masked + '-' + str(count)]
+        df = pd.concat([df, df_single_masked], axis=1)
+        count += 1
+    return df
+
+
+def _make_excluding_mask(df_masked, mask):
+    lower, upper = mask
+    lower = get_nearest_in_dataframe(df_masked, lower)
+    upper = get_nearest_in_dataframe(df_masked, upper)
+    lower_ = df_masked.loc[:lower.name]
+    upper_ = df_masked.loc[lower.name:]
+    upper_ = upper_.loc[upper.name:]
+    df_masked = pd.concat([lower_, upper_], axis=0, verify_integrity=False)
+    return df_masked
+
+
+def _make_including_mask(df_masked, mask):
+    lower, upper = mask
+    lower = get_nearest_in_dataframe(df_masked, lower)
+    upper = get_nearest_in_dataframe(df_masked, upper)
+    return df_masked.loc[lower.name:upper.name]
+
+
+def _remove_nan_from_masked_column(index, col):
     index_temp = []
     col_temp = []
     for j in range(len(col)):
@@ -64,10 +104,9 @@ def remove_nan_from_masked_column(index, col):
 
 def get_multiplet_separation(fit_df, left, right):
     # Use left=1, right=4 for calibration
-    # TODO: error sig
     separation = fit_df['gauss{}_cen'.format(right)].values[0] - fit_df['gauss{}_cen'.format(left)].values[0]
-    error = np.sqrt(fit_df['gauss{}_cen_err'.format(right)].values[0]**2
-                    + fit_df['gauss{}_cen_err'.format(left)].values[0]**2)
+    error = np.sqrt(fit_df['gauss{}_sig'.format(right)].values[0]**2
+                    + fit_df['gauss{}_sig'.format(left)].values[0]**2)
     return separation, error
 
 

@@ -59,14 +59,15 @@ def calibrate_voltage_to_freq_scale(dfs, calibration_factor, definition_zero):
     return calibrated_dfs
 
 
-def subtract_gaussian_fit_from_finestructure(dfs):
+def subtract_gaussian_fit(dfs):
+
     filtered_dfs = []
     for df in dfs:
         if not len(df) == 1:
             df, file_name = df
 
         df['Aux in minus Best fit [V]'] = Series(data=df['Aux in [V]'].values - df['Best fit - Aux in [V]'].values,
-                                                           index=df.index)
+                                                 index=df.index)
 
         if not len(df) == 1:
             filtered_dfs.append((df, file_name))

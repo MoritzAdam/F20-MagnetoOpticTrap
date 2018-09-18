@@ -7,11 +7,12 @@ from lib.parse_plot_data import get_txt_csv, make_oscilloscope_df, \
     make_spectroscopy_df, plot_dfs, \
     plot_dfs_spectroscopy
 from lib.filter_data import filter_loading, filter_zoomed_spectroscopy, \
-    calibrate_voltage_to_freq_scale, filter_recapture, subtract_gaussian_fit_from_finestructure
+    calibrate_voltage_to_freq_scale, filter_recapture, subtract_gaussian_fit
 from lib.analysis import loading_analysis, recapture_analysis
 from lib.fit_data import fit_loading_dfs
-from lib.analysis import loading_analysis, calculate_mean, get_temp_from_finestructure_fits
-from lib.fit_data import fit_loading_dfs, fit_spectroscopy_dfs
+from lib.analysis import loading_analysis, calculate_mean, save_temp_from_finestructure_in_fit_df,\
+    save_linewidth_hyperfinestructure_in_fit_df
+from lib.fit_data import fit_loading_dfs, fit_spectroscopy_dfs, create_fit_data_from_params
 
 
 def main():
@@ -78,8 +79,9 @@ def main():
     fig, axes = plot_dfs_spectroscopy(dfs_compl_spec,
                                       max_column_number=1,
                                       plot_PDH_out=False,
-                                      plot_fit=True)
-    plt.show()
+                                      plot_fit=True,
+                                      x_label='voltage out [V]', y_label='voltage in [V]')
+    #plt.show()
 
     calibration_factor, calibration_factor_err = get_multiplet_separation(fit_df_compl_spec,
                                                                           left=1,
@@ -88,11 +90,11 @@ def main():
     print('calibration factor: {}, zero definition: {}'.format(calibration_factor, definition_zero))
 
     df_multiplet_sep = get_multiplet_df(fit_df_compl_spec)
-    #df_multiplet_sep.to_excel(c.save_multiplet_path)
+    df_multiplet_sep.to_excel(c.save_multiplet_path)
 
     # Gaussian fits of the transitions (unzoomed)
-    dfs_spec = dfs_spec
-    dfs_spec = filter_zoomed_spectroscopy(dfs_spec,
+    dfs_spec_all = dfs_spec.copy()
+    dfs_spec = filter_zoomed_spectroscopy(dfs_spec_all,
                                           return_zoomed=False,
                                           return_entire=False)
 
@@ -110,30 +112,76 @@ def main():
     fig, axes = plot_dfs_spectroscopy(dfs_spec,
                                       max_column_number=2,
                                       plot_PDH_out=False,
-                                      plot_fit=True)
-    plt.show()
+                                      plot_fit=True,
+                                      x_label='frequency [GHz]', y_label='voltage [V]')
+    #plt.show()
 
-    fit_df_spec = get_temp_from_finestructure_fits(fit_df_spec)
-    print(fit_df_spec)
-    #fit_df_spec.to_excel(c.save_finestructure_path)
+    fit_df_spec = save_temp_from_finestructure_in_fit_df(fit_df_spec)
+    fit_df_spec.to_excel(c.save_finestructure_path)
 
-    # Fit hyperfine structure to determine linewidth
-    dfs_spec = subtract_gaussian_fit_from_finestructure(dfs_spec)
-    dfs_spec = mask_dfs(dfs_spec, all_masks=[[],
-                                             [],
-                                             [],
-                                             []],
-                        column_to_be_masked='Aux in minus Best fit [V]')
+    # Fit hyperfine structure to determine linewidths
+    dfs_spec_hyperfine = dfs_spec.copy()
+    dfs_spec_hyperfine = subtract_gaussian_fit(dfs_spec_hyperfine)
+    column_name = 'Aux in minus Best fit [V]'
+    masks = [[(3.88, 3.905), (3.92, 3.938)],
+             [(1.45, 1.475), (1.485, 1.52)],
+             [(6.16, 6.20), (6.205, 6.25), (6.26, 6.29), (6.30, 6.34)],
+             [(0.155, 0.195), (0.22, 0.27), (0.29, 0.34)]]
 
-    fig, axes = plot_dfs_spectroscopy(dfs_spec,
+    dfs_spec_hyperfine = mask_dfs(dfs_spec_hyperfine, all_masks=masks,
+                        column_to_be_masked=column_name,
+                        split_masks=True)
+
+    dfs_spec_hyperfine, fit_df_spec_hyperfine = fit_spectroscopy_dfs(dfs_spec_hyperfine, fct='lorentzian', column_to_fit=column_name,
+                                                 use_splitted_masks=True, masks=masks)
+
+    fig, axes = plot_dfs_spectroscopy(dfs_spec_hyperfine,
                                       max_column_number=2,
+                                      fit_data=fit_df_spec_hyperfine,
                                       plot_initial=False,
                                       plot_PDH_out=False,
-                                      plot_fit=False,
-                                      plot_deriv=True,
+                                      plot_fit=True,
+                                      plot_deriv=False,
                                       plot_data_with_subtracted_fit=True,
-                                      plot_hyperfine_fit=True)
+                                      use_splitted_masks=True,
+                                      use_automated_fit_plot_barrier=True,
+                                      column_name=column_name,
+                                      masks=masks,
+                                      x_label='frequency [GHz]', y_label='voltage [V]')
+
     plt.show()
+    fit_df_spec_hyperfine = save_linewidth_hyperfinestructure_in_fit_df(fit_df_spec_hyperfine)
+    fit_df_spec_hyperfine.to_excel(c.save_hyperfinestructure_path)
+
+    ## Fit zoomed hyperfine structure to determine linewidths
+    #dfs_spec_hyperfine_zoom = filter_zoomed_spectroscopy(dfs_spec_all,
+    #                                      return_zoomed=True,
+    #                                      return_entire=False)
+#
+    #dfs_spec_hyperfine_zoom = create_fit_data_from_params(dfs_spec_hyperfine_zoom, 'Aux in [V]', fit_df_spec)
+#
+    #dfs_spec_hyperfine_zoom = subtract_gaussian_fit(dfs_spec_hyperfine_zoom)
+#
+    ##dfs_spec_hyperfine_zoom = mask_dfs(dfs_spec_hyperfine_zoom, all_masks=masks,
+    ##                    column_to_be_masked=column_name,
+    ##                    split_masks=True)
+#
+    ##dfs_spec_zoom, fit_df_spec_zoom = fit_spectroscopy_dfs(dfs_spec_zoom, fct='lorentzian', column_to_fit=column_name,
+    ##                                             use_splitted_masks=True, masks=masks)
+#
+    #fig, axes = plot_dfs_spectroscopy(dfs_spec_hyperfine_zoom,
+    #                                  max_column_number=2,
+    #                                  plot_initial=True,
+    #                                  plot_fit=False,
+    #                                  plot_deriv=False,
+    #                                  plot_data_with_subtracted_fit=True,
+    #                                  use_splitted_masks=True,
+    #                                  use_global_zoom_for_hyperfine=False,
+    #                                  column_name=column_name,
+    #                                  masks=masks)
+    #plt.show()
+    ##print(fit_df_spec_zoom)
+    ## fit_df_spec.to_excel(c.save_hyperfinestructure_path_control)
 
 if __name__ == '__main__':
     main()

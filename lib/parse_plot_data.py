@@ -4,7 +4,7 @@ import pandas as pd
 import os
 import lib.constants as c
 from math import ceil
-from lib.util import get_nearest_in_dataframe, remove_nan_from_masked_column
+from lib.util import get_nearest_in_dataframe, _remove_nan_from_masked_column
 
 def import_dict(str):
     det = {}
@@ -70,9 +70,16 @@ def plot_dfs(dfs, style, recapture=None):
     plt.tight_layout()
 
 
-def plot_dfs_spectroscopy(dfs, max_column_number, plot_initial=True, plot_PDH_out=False, plot_fit=False,
+# TODO: label transitions in plots
+# TODO: split up functions in smaller parts
+def plot_dfs_spectroscopy(dfs, max_column_number, x_label, y_label, fit_data=None, plot_initial=True, plot_PDH_out=False, plot_fit=False,
                           plot_deriv=False, plot_data_with_subtracted_fit=False, plot_hyperfine_fit=False,
-                          subplot_title_addition='', global_title='', emphasize=None):
+                          use_global_zoom_for_hyperfine=True, subplot_title_addition='', emphasize=None,
+                          use_splitted_masks=False, use_automated_fit_plot_barrier=False, column_name='Aux in [V]', masks=None):
+    if not use_global_zoom_for_hyperfine:
+        zoom = [(0, -1), (0, -1), (0, -1), (0, -1)]
+    else:
+        zoom = c.GLOBAL_ZOOM_FOR_HYPERFINE
 
     plot_columns = ceil(len(dfs)/max_column_number)
     fig, axis = plt.subplots(plot_columns, max_column_number,
@@ -85,6 +92,7 @@ def plot_dfs_spectroscopy(dfs, max_column_number, plot_initial=True, plot_PDH_ou
 
     for i, df in enumerate(dfs):
         df, file_name = df
+        add_axis = axis[i].twinx()
 
         if plot_initial:
             axis[i].plot(df.index, df.values[:, 0], '.', color='steelblue', markersize=c.PLOT_MARKERSIZE)
@@ -99,35 +107,75 @@ def plot_dfs_spectroscopy(dfs, max_column_number, plot_initial=True, plot_PDH_ou
                              markersize=c.PLOT_MARKERSIZE)
 
         if plot_PDH_out:
-            add_axis = axis[i].twinx()
             add_axis.plot(df.index, df.loc[:, 'PDH out [a.u.]'].values, '.', color='grey', alpha=0.3, markersize=c.PLOT_MARKERSIZE)
 
-        if plot_fit:
-            axis[i].plot(df.index, df.loc[:, 'Masked - Aux in [V]'].values, '.', color='black', markersize=c.PLOT_MARKERSIZE)
-            axis[i].plot(df.index, df.loc[:, 'Best fit - Aux in [V]'].values, '-', color='r', alpha=0.7, markersize=c.PLOT_MARKERSIZE)
-
         if plot_data_with_subtracted_fit:
-            add_axis = axis[i].twinx()
-            add_axis.plot(df.index[c.GLOBAL_ZOOM_FOR_HYPERFINE[i][0]:c.GLOBAL_ZOOM_FOR_HYPERFINE[i][1]],
+            add_axis.plot(df.index[zoom[i][0]:zoom[i][1]],
                           df.loc[:, 'Aux in minus Best fit [V]']
-                          .values[c.GLOBAL_ZOOM_FOR_HYPERFINE[i][0]:c.GLOBAL_ZOOM_FOR_HYPERFINE[i][1]],
+                          .values[zoom[i][0]:zoom[i][1]],
                           '.', color='limegreen', markersize=c.PLOT_MARKERSIZE)
+
+        if plot_fit:
+            if use_splitted_masks:
+                count = 0
+                mask = masks[i]
+                for single_mask in mask:
+                    column_extension = '-' + str(count)
+                    add_axis.plot(df.index[zoom[i][0]:zoom[i][1]],
+                                  df.loc[:, c.MASK_NAME + column_name + column_extension]
+                                  .values[zoom[i][0]:zoom[i][1]],
+                                  '.', color='black', markersize=c.PLOT_MARKERSIZE)
+                    if not use_automated_fit_plot_barrier:
+                        lower_fit_plot_barrier = zoom[i][0]
+                        upper_fit_plot_barrier = zoom[i][1]
+
+                        add_axis.plot(df.index[lower_fit_plot_barrier:upper_fit_plot_barrier].values,
+                                      df.loc[:, 'Best fit - ' + column_name + column_extension]
+                                      .values[lower_fit_plot_barrier:upper_fit_plot_barrier],
+                                      '-', color='r', alpha=0.7, markersize=c.PLOT_MARKERSIZE)
+
+                    else:
+                        if fit_data is None:
+                            raise UserWarning('fit_data has to be provided if use_automated_fit_plot_barrier is True')
+
+                        cen = fit_data.loc[file_name + column_extension, 'cen']
+                        gamma = fit_data.loc[file_name + column_extension, 'gamma']
+
+                        lower_fit_plot_barrier = get_nearest_in_dataframe(df, cen - 7 * gamma).name
+                        upper_fit_plot_barrier = get_nearest_in_dataframe(df, cen + 7 * gamma).name
+
+                        series = df.loc[lower_fit_plot_barrier:upper_fit_plot_barrier, 'Best fit - ' + column_name + column_extension]
+
+                        add_axis.plot(series.index.values, series.values,
+                                      '-', color='r', alpha=0.7, markersize=c.PLOT_MARKERSIZE)
+
+                    count += 1
+
+            else:
+                axis[i].plot(df.index, df.loc[:, c.MASK_NAME + column_name].values, '.', color='black',
+                             markersize=c.PLOT_MARKERSIZE)
+                axis[i].plot(df.index, df.loc[:, 'Best fit - ' + column_name].values, '-', color='r', alpha=0.7,
+                             markersize=c.PLOT_MARKERSIZE)
 
         if plot_hyperfine_fit:
             if not plot_data_with_subtracted_fit:
                 raise UserWarning('plot_data_with_subtracted_fit has to be True when plot_hyperfine_fit is True')
-            add_axis.plot(df.index[c.GLOBAL_ZOOM_FOR_HYPERFINE[i][0]:c.GLOBAL_ZOOM_FOR_HYPERFINE[i][1]],
+            add_axis.plot(df.index[zoom[i][0]:zoom[i][1]],
                           df.loc[:, 'Masked - Aux in minus Best fit [V]']
-                          .values[c.GLOBAL_ZOOM_FOR_HYPERFINE[i][0]:c.GLOBAL_ZOOM_FOR_HYPERFINE[i][1]],
+                          .values[zoom[i][0]:zoom[i][1]],
                           '.', color='black', markersize=c.PLOT_MARKERSIZE)
 
         if plot_deriv:
             add_axis = axis[i].twinx()
-            add_axis.plot(df.index[c.GLOBAL_ZOOM_FOR_HYPERFINE[i][0] + 1:c.GLOBAL_ZOOM_FOR_HYPERFINE[i][1]],
-                          np.diff(np.asarray(df.loc[:, 'Aux in [V]'].values))[c.GLOBAL_ZOOM_FOR_HYPERFINE[i][0]:c.GLOBAL_ZOOM_FOR_HYPERFINE[i][1]],
+            add_axis.plot(df.index[zoom[i][0] + 1:zoom[i][1]],
+                          np.diff(np.asarray(df.loc[:, 'Aux in [V]'].values))[zoom[i][0]:zoom[i][1]],
                           '-', color='limegreen', alpha=0.4, markersize=c.PLOT_MARKERSIZE)
 
         axis[i].set_title(txt_title(file_name) + subplot_title_addition, fontsize=10)
+        axis[i].set_xlabel(x_label)
+        axis[i].set_ylabel(y_label)
+
+
     if not max_column_number == 1:
         plt.tight_layout()
 

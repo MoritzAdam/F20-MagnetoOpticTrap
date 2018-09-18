@@ -1,7 +1,7 @@
 import pandas as pd
 import matplotlib.pyplot as plt
 import numpy as np
-from lib.util import remove_nan_from_masked_column, get_nearest_index_in_array
+from lib.util import _remove_nan_from_masked_column, get_nearest_index_in_array
 from lmfit import Parameters, minimize
 from lmfit.models import Model, LinearModel, ExponentialModel
 
@@ -85,7 +85,7 @@ def fit_loading_dfs(dfs, offset_on=False):
     return dfs, fit_df
 
 
-def _initialize_fit_data_df(fct, dfs):
+def _initialize_fit_data_df(fct, dfs, use_splitted_masks=False, masks=None):
     fit_params = {}
     if fct == 'gaussian':
         fit_params.update({
@@ -104,6 +104,8 @@ def _initialize_fit_data_df(fct, dfs):
     if fct == 'lorentzian':
         fit_params.update({
             'file': [file_name for df, file_name in dfs],
+            'amp': [],
+            'amp_err': [],
             'cen': [],
             'cen_err': [],
             'gamma': [],
@@ -134,10 +136,18 @@ def _initialize_fit_data_df(fct, dfs):
         fit_params['file'] = [file_name for df, file_name in dfs],
         fit_params['redchi'] = []
 
+    if use_splitted_masks:
+        new_files = []
+        for j, mask in enumerate(masks):
+            for i, single_mask in enumerate(mask):
+                new_files.append(fit_params['file'][j] + '-{}'.format(i))
+        fit_params['file'] = new_files
+
     return fit_params
 
 
-def fit_spectroscopy_dfs(dfs, fct='gaussian', all_init_params=None, column_to_fit='Aux in [V]'):
+def fit_spectroscopy_dfs(dfs, fct='gaussian', all_init_params=None, column_to_fit='Aux in [V]',
+                         use_splitted_masks=False, masks=None):
     fcts = {
         'gaussian': gaussian,
         'double_gaussian': double_gaussian,
@@ -148,31 +158,45 @@ def fit_spectroscopy_dfs(dfs, fct='gaussian', all_init_params=None, column_to_fi
     if fct not in fcts.keys():
         raise UserWarning('unknown fit function')
 
-    fit_stat = _initialize_fit_data_df(fct, dfs)
+    fit_stat = _initialize_fit_data_df(fct, dfs, use_splitted_masks=use_splitted_masks, masks=masks)
     dfs_fitted = []
 
     for i, df in enumerate(dfs):
         df, file_name = df
         x_crop = df.index.values
-        y_crop = df.loc[:, 'Masked - ' + column_to_fit].values
-
-        x_crop, y_crop = remove_nan_from_masked_column(x_crop, y_crop)
-
-        model = _make_model(fcts[fct])
-        params = _get_init_params(fct, all_init_params, model, x_crop, y_crop, i)
-
-        fit = model.fit(y_crop, x=x_crop, params=params, method='leastsq', nan_policy='propagate')
-        print(fit.fit_report(min_correl=0.25))
-
-        fit_stat = _save_fit_params(fit, fit_stat)
-
-        df = _save_fit_in_df(df=df, fit=fit, column_to_fit=column_to_fit)
+        if use_splitted_masks:
+            mask = masks[i]
+            count = 0
+            for single_mask in mask:
+                column_extension = '-' + str(count)
+                y_crop = df.loc[:, 'Masked - ' + column_to_fit + column_extension].values
+                df, fit_stat = fit_single_spectroscopy_column(df, x_crop, y_crop, all_init_params, i, fcts, fct,
+                                                              fit_stat, column_to_fit, column_extension=column_extension)
+                count += 1
+        else:
+            y_crop = df.loc[:, 'Masked - ' + column_to_fit].values
+            df, fit_stat = fit_single_spectroscopy_column(df, x_crop, y_crop, all_init_params, i, fcts, fct, fit_stat, column_to_fit)
         dfs_fitted.append((df, file_name))
 
     fit_df = pd.DataFrame(data=fit_stat)
     fit_df = fit_df.set_index('file', drop=True).sort_index(level=0)
 
     return dfs_fitted, fit_df
+
+
+def fit_single_spectroscopy_column(df, x_crop, y_crop, all_init_params, i, fcts, fct, fit_stat, column_to_fit, column_extension=''):
+    x_crop, y_crop = _remove_nan_from_masked_column(x_crop, y_crop)
+
+    model = _make_model(fcts[fct])
+    params = _get_init_params(fct, all_init_params, model, x_crop, y_crop, i)
+
+    fit = model.fit(y_crop, x=x_crop, params=params, method='leastsq', nan_policy='propagate')
+    print(fit.fit_report(min_correl=0.25))
+
+    fit_stat = _save_fit_params(fit, fit_stat)
+
+    df = _save_fit_in_df(df=df, fit=fit, column_to_fit=column_to_fit, column_extension=column_extension)
+    return df, fit_stat
 
 
 def _get_init_params(fct, all_init_params, model, x_crop, y_crop, i):
@@ -189,11 +213,14 @@ def _get_init_params(fct, all_init_params, model, x_crop, y_crop, i):
 
     if fct == 'lorentzian':
         if all_init_params and all_init_params[i] is not None:
-            cen, gamma, off = all_init_params[i]
+            amp, cen, gamma, off = all_init_params[i]
         else:
             # guess initial params
-            raise UserWarning('please provide initial params; for poly_gaussian params guess is not yet implemented')
-        params = model.make_params(cen=cen, gamma=gamma, off=off)
+            amp = np.max(y_crop)
+            cen = x_crop[np.argmax(y_crop)]
+            off = np.max(x_crop)
+            gamma = abs(cen - x_crop[get_nearest_index_in_array(y_crop, (amp - off) / 2)])
+        params = model.make_params(amp=amp, cen=cen, gamma=gamma, off=off)
 
     if fct == 'double_gaussian':
         if all_init_params and all_init_params[i] is not None:
@@ -259,13 +286,13 @@ def poly_gaussian():
     return model
 
 
-def lorentzian(x, cen, gamma, off):
-    return 1 / (np.pi * gamma) * 1 / (1 + (x-cen)**2 / gamma**2) + off
+def lorentzian(x, amp, cen, gamma, off):
+    return amp / (np.pi * gamma) * 1 / (1 + (x-cen)**2 / gamma**2) + off
 
 
-def _save_fit_in_df(df, fit, column_to_fit):
+def _save_fit_in_df(df, fit, column_to_fit, column_extension=''):
     x_init = df.index.values
-    df['Best fit - ' + column_to_fit] = fit.eval(x=x_init)
+    df['Best fit - ' + column_to_fit + column_extension] = fit.eval(x=x_init)
     return df
 
 
@@ -277,3 +304,26 @@ def _save_fit_params(fit, fit_data):
             fit_data[key].append(fit_params[key].value)
             fit_data[key + '_err'].append(fit_params[key].stderr)
     return fit_data
+
+
+def create_fit_data_from_params(dfs, column_to_fit, fit_data, fct='gaussian', column_extension=''):
+    new_dfs = []
+    for df in dfs:
+        df, file_name = df
+
+        if fct == 'gaussian':
+            amp = fit_data.loc[file_name[:4], 'amp']
+            cen = fit_data.loc[file_name[:4], 'cen']
+            sig = fit_data.loc[file_name[:4], 'sig']
+            off = fit_data.loc[file_name[:4], 'off']
+
+            x = df.index.values
+            df['Best fit - ' + column_to_fit + column_extension] = pd.Series(data=gaussian(x, amp, cen, sig, off),
+                                                                             index=df.index)
+            new_dfs.append((df, file_name))
+        else:
+            raise UserWarning('create fit from params not yet implemented for the chosen function')
+    return new_dfs
+
+
+

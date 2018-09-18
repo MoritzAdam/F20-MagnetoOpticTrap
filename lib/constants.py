@@ -35,9 +35,12 @@ QE = 0.52
 S = 1e6 / (1e6 + 50)
 
 # constants for spectroscopy
+MASK_NAME = 'Masked - '
 RB87_FREQ_SEP_THEORY_F1_F2 = 6.834682610904290  # (90) [GHz]
 K_BOLTZMANN = sc.k
 C = sc.c
+FIT_PLOT_BARRIER = 100
+nu0 = {}
 GLOBAL_ZOOM_FOR_HYPERFINE = [(460, -400),
                              (450, -370),
                              (400, -380),
