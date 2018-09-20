@@ -70,7 +70,6 @@ def plot_dfs(dfs, style, recapture=None):
     plt.tight_layout()
 
 
-# TODO: label transitions in plots
 # TODO: split up functions in smaller parts
 def plot_dfs_spectroscopy(dfs, max_column_number, x_label, y_label, fit_data=None, plot_initial=True, plot_PDH_out=False, plot_fit=False,
                           plot_deriv=False, plot_data_with_subtracted_fit=False, plot_hyperfine_fit=False,
@@ -169,6 +168,23 @@ def plot_dfs_spectroscopy(dfs, max_column_number, x_label, y_label, fit_data=Non
                 ax.plot(df.index[zoom[i][0]:zoom[i][1]], df.loc[:, 'Best fit - ' + column_name].values[zoom[i][0]:zoom[i][1]], '-', color='r', alpha=0.7,
                              markersize=c.PLOT_MARKERSIZE)
 
+            if fit_data is not None:
+                centers = []
+
+                for key in fit_data.keys():
+                    if 'cen' in key and 'cen_err' not in key:
+                        centers.append(key)
+
+                centers = np.asarray(centers)
+
+                string_count = 0
+                labels = np.array(['a', 'b', 'c', 'd', 'e', 'f', 'g'])
+                for n in range(len(centers)):
+                    ax.text(fit_data.loc[file_name, centers[n]],
+                            np.min(np.asarray(df.loc[:, 'Best fit - ' + column_name].values[zoom[i][0]:zoom[i][1]])),
+                            labels[string_count] + ')')
+                    string_count += 1
+
 
 
         if plot_hyperfine_fit:
@@ -190,6 +206,8 @@ def plot_dfs_spectroscopy(dfs, max_column_number, x_label, y_label, fit_data=Non
         axis[i].set_ylabel(y_label)
 
 
+
+
     if not max_column_number == 1:
         plt.tight_layout()
 
@@ -201,4 +219,3 @@ def txt_title(file_name):
         return r'$^{%s}Rb; \ F=%s \rightarrow F´$'%(file_name[0:2], file_name[3:4])
     else:
         return r'$^{85}Rb \ and \ ^{87}Rb \ spectrum$'
-

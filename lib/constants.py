@@ -7,9 +7,14 @@ spectroscopy_path = os.path.join(data_path, 'part1_spectroscopy')
 loading_path = os.path.join(data_path, 'part3_loading')
 temperature_path = os.path.join(data_path, 'part4_release_recapture')
 
-save_finestructure_path = os.path.join(data_path, 'finestructure_fit.xlsx')
-save_multiplet_path = os.path.join(data_path, 'multiplet_separation.xlsx')
-save_hyperfinestructure_path = os.path.join(data_path, 'hyperfinestructure_fit.xlsx')
+evaluation_path = '../eval'
+save_loading_path = os.path.join(evaluation_path, 'loading.xlsx')
+save_rr_path = os.path.join(evaluation_path, 'release_recapture.xlsx')
+save_finestructure_path = os.path.join(evaluation_path, 'finestructure_fit.xlsx')
+save_multiplet_path = os.path.join(evaluation_path, 'multiplet_separation.xlsx')
+save_hyperfinestructure_path = os.path.join(evaluation_path, 'hyperfinestructure_fit.xlsx')
+save_hyperfinestructure_zoom_path = os.path.join(evaluation_path, 'hyperfinestructure_zoom_fit.xlsx')
+
 
 PLOT_MARKERSIZE = 2
 MOT_RADIUS = 1.5*1e-3  # [m]

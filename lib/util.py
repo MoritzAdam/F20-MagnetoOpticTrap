@@ -49,7 +49,6 @@ def _multi_masks(df, masks, column_to_be_masked='Aux in [V]'):
         df_masked = _make_excluding_mask(df_masked=df_masked, mask=mask)
 
     df_masked.columns = ['Masked - ' + column_to_be_masked]
-    print(df, df_masked)
     return pd.concat([df, df_masked], axis=1)
 
 
