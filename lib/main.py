@@ -10,8 +10,7 @@ from lib.filter_data import filter_loading, filter_zoomed_spectroscopy, \
     calibrate_voltage_to_freq_scale, filter_recapture, subtract_gaussian_fit
 from lib.analysis import loading_analysis, recapture_analysis
 from lib.fit_data import fit_loading_dfs
-from lib.analysis import loading_analysis, calculate_mean, save_temp_from_finestructure_in_fit_df,\
-    save_linewidth_hyperfinestructure_in_fit_df
+from lib.analysis import loading_analysis, calculate_mean, save_temp_from_finestructure_in_fit_df
 from lib.fit_data import fit_loading_dfs, fit_spectroscopy_dfs, create_fit_data_from_params
 
 
@@ -65,16 +64,16 @@ def main():
     dfs_compl_spec = mask_dfs(dfs_compl_spec, all_masks=[[(-0.66, -0.60), (-0.41, -0.35),
                                                           (0.18, 0.23), (0.66, 0.7)]])
 
-    params = [(-0.2, -0.4, -0.3, -0.1,
-               -0.6, -0.4, 0.23, 0.7,
-               0.1, 0.1, 0.1, 0.1,
-               0.6, 0.6, 0.6, 0.6,
-               0.7, 0.7,
-               -0.004, -0.004)]
+    params_poly_gauss = [{'gauss1_amp': -0.2, 'gauss2_amp': -0.4, 'gauss3_amp': -0.3, 'gauss4_amp': -0.1,
+                         'gauss1_cen': -0.6, 'gauss2_cen': -0.4, 'gauss3_cen': 0.23, 'gauss4_cen': 0.7,
+                         'gauss1_sig': 0.1, 'gauss2_sig': 0.1, 'gauss3_sig': 0.1, 'gauss4_sig': 0.1,
+                         'gauss1_off': 0.6, 'gauss2_off': 0.6, 'gauss3_off': 0.6, 'gauss4_off': 0.6,
+                         'linear1_intercept': 0.7, 'linear2_intercept': 0.7,
+                         'linear1_slope': -0.004, 'linear2_slope': -0.004}]
 
     dfs_compl_spec, fit_df_compl_spec = fit_spectroscopy_dfs(dfs_compl_spec,
                                                              fct='poly_gaussian',
-                                                             all_init_params=params)
+                                                             init_params=params_poly_gauss)
 
     fig, axes = plot_dfs_spectroscopy(dfs_compl_spec,
                                       max_column_number=1,
@@ -102,12 +101,24 @@ def main():
                                                calibration_factor=calibration_factor,
                                                definition_zero=definition_zero)
 
-    dfs_spec = mask_dfs(dfs_spec, all_masks=[[(0., 3.25), (3.85, 4.05)],
-                                             [(1.25, 1.7), (2.05, 2.3)],
-                                             [(6.05, 6.45)],
-                                             [(-0.6, -0.2), (1.2, 1.3)]])
+    #dfs_spec = mask_dfs(dfs_spec, all_masks=[[(0., 3.25), (3.85, 4.05)],
+    #                                         [(1.25, 1.7), (2.05, 2.3)],
+    #                                         [(6.05, 6.45)],
+    #                                         [(-0.6, -0.2), (1.2, 1.3)]])
 
-    dfs_spec, fit_df_spec = fit_spectroscopy_dfs(dfs_spec, fct='gaussian')
+    dfs_spec = mask_dfs(dfs_spec, all_masks=[[(3.85, 4.05)],
+                                             [(0.6, 1.1), (1.22, 1.62), (2.05, 2.3)],
+                                             [(6.05, 6.45)],
+                                             [(0.15, 0.43), (0.8, 1.3)]])
+
+    params_gauss = [
+        {'amp': -0.2064, 'cen': 3.9153, 'sig': 0.27, 'off': 0.62},
+        {'amp': -0.4, 'cen': 1.4, 'sig': 0.3, 'off': 0.62},
+        {'amp': -0.076, 'cen': 6.2575, 'sig': 0.27, 'off': 0.62},
+        {'amp': -0.5, 'cen': 0.25, 'sig': 0.3, 'off': 0.62}
+    ]
+
+    dfs_spec, fit_df_spec = fit_spectroscopy_dfs(dfs_spec, fct='gaussian', init_params=params_gauss)
 
     fig, axes = plot_dfs_spectroscopy(dfs_spec,
                                       max_column_number=2,
@@ -117,23 +128,57 @@ def main():
     #plt.show()
 
     fit_df_spec = save_temp_from_finestructure_in_fit_df(fit_df_spec)
-    fit_df_spec.to_excel(c.save_finestructure_path)
+    #fit_df_spec.to_excel(c.save_finestructure_path)
 
     # Fit hyperfine structure to determine linewidths
     dfs_spec_hyperfine = dfs_spec.copy()
     dfs_spec_hyperfine = subtract_gaussian_fit(dfs_spec_hyperfine)
     column_name = 'Aux in minus Best fit [V]'
-    masks = [[(3.88, 3.905), (3.92, 3.938)],
-             [(1.45, 1.475), (1.485, 1.52)],
-             [(6.16, 6.20), (6.205, 6.25), (6.26, 6.29), (6.30, 6.34)],
-             [(0.155, 0.195), (0.22, 0.27), (0.29, 0.34)]]
+    #masks = [[(3.88, 3.905), (3.92, 3.938)],
+    #         [(1.45, 1.475), (1.485, 1.52)],
+    #         [(6.16, 6.20), (6.205, 6.25), (6.26, 6.29), (6.30, 6.34)],
+    #         [(0.155, 0.195), (0.22, 0.27), (0.29, 0.34)]]
+    masks = [[(c.START_TOKEN, 3.85), (4.05, c.STOP_TOKEN)],
+             [(c.START_TOKEN, 1.38), (1.60, c.STOP_TOKEN)],
+             [(c.START_TOKEN, 6.07), (6.45, c.STOP_TOKEN)],
+             [(c.START_TOKEN, 0.11), (0.50, c.STOP_TOKEN)]]
 
     dfs_spec_hyperfine = mask_dfs(dfs_spec_hyperfine, all_masks=masks,
                         column_to_be_masked=column_name,
-                        split_masks=True)
+                        split_masks=False)
 
-    dfs_spec_hyperfine, fit_df_spec_hyperfine = fit_spectroscopy_dfs(dfs_spec_hyperfine, fct='lorentzian', column_to_fit=column_name,
-                                                 use_splitted_masks=True, masks=masks)
+    params_poly_lorentzian = [
+        {'number_unique_lorentzians': 6,
+        'lorentzian1_amp': 0.02, 'lorentzian1_gamma': 0.01, 'lorentzian1_off': 0.027, 'lorentzian1_cen': 3.9,
+         'lorentzian2_amp': 0.01, 'lorentzian2_gamma': 0.001, 'lorentzian2_off': 0.03, 'lorentzian2_cen': 3.92,
+         'lorentzian3_amp': 0.05, 'lorentzian3_gamma': 0.01, 'lorentzian3_off': 0.04, 'lorentzian3_cen': 3.935,
+         'lorentzian4_amp': 0.04, 'lorentzian4_gamma': 0.01, 'lorentzian4_off': 0.04, 'lorentzian4_cen': 3.95,
+         'lorentzian5_amp': 0.02, 'lorentzian5_gamma': 0.01, 'lorentzian5_off': 0.02, 'lorentzian5_cen': 3.98,
+         'lorentzian6_amp': 0.01, 'lorentzian6_gamma': 0.001, 'lorentzian6_off': 0.005, 'lorentzian6_cen': 4.025},
+        {'number_unique_lorentzians': 5,
+         'lorentzian1_amp': 0.005, 'lorentzian1_gamma': 0.001, 'lorentzian1_off': 0.016, 'lorentzian1_cen': 1.3955,
+         'lorentzian2_amp': 0.005, 'lorentzian2_gamma': 0.001, 'lorentzian2_off': 0.025, 'lorentzian2_cen': 1.4315,
+         'lorentzian3_amp': 0.02, 'lorentzian3_gamma': 0.01, 'lorentzian3_off': 0.03, 'lorentzian3_cen': 1.46,
+         'lorentzian4_amp': 0.04, 'lorentzian4_gamma': 0.01, 'lorentzian4_off': 0.03, 'lorentzian4_cen': 1.5,
+         'lorentzian5_amp': 0.005, 'lorentzian5_gamma': 0.001, 'lorentzian5_off': 0.02, 'lorentzian5_cen': 1.5676},
+        {'number_unique_lorentzians': 6,
+         'lorentzian1_amp': 0.002, 'lorentzian1_gamma': 0.001, 'lorentzian1_off': 0.001, 'lorentzian1_cen': 6.145,
+         'lorentzian2_amp': 0.007, 'lorentzian2_gamma': 0.01, 'lorentzian2_off': 0.003, 'lorentzian2_cen': 6.18,
+         'lorentzian3_amp': 0.011, 'lorentzian3_gamma': 0.01, 'lorentzian3_off': 0.006, 'lorentzian3_cen': 6.215,
+         'lorentzian4_amp': 0.017, 'lorentzian4_gamma': 0.01, 'lorentzian4_off': 0.009, 'lorentzian4_cen': 6.27,
+         'lorentzian5_amp': 0.02, 'lorentzian5_gamma': 0.01, 'lorentzian5_off': 0.01, 'lorentzian5_cen': 6.31,
+         'lorentzian6_amp': 0.007, 'lorentzian6_gamma': 0.01, 'lorentzian6_off': 0.003, 'lorentzian6_cen': 6.41},
+        {'number_unique_lorentzians': 5,
+         'lorentzian1_amp': 0.001, 'lorentzian1_gamma': 0.005, 'lorentzian1_off': 0.002, 'lorentzian1_cen': 0.13,
+         'lorentzian2_amp': 0.006, 'lorentzian2_gamma': 0.002, 'lorentzian2_off': 0.008, 'lorentzian2_cen': 0.1718,
+         'lorentzian3_amp': 0.015, 'lorentzian3_gamma': 0.01, 'lorentzian3_off': 0.01, 'lorentzian3_cen': 0.23,
+         'lorentzian4_amp': 0.04, 'lorentzian4_gamma': 0.01, 'lorentzian4_off': 0.01, 'lorentzian4_cen': 0.32,
+         'lorentzian5_amp': 0.006, 'lorentzian5_gamma': 0.002, 'lorentzian5_off': 0.001, 'lorentzian5_cen': 0.472}
+    ]
+
+    dfs_spec_hyperfine, fit_df_spec_hyperfine = fit_spectroscopy_dfs(dfs_spec_hyperfine, fct='poly_lorentzian',
+                                                                     column_to_fit=column_name, use_multiple_lorentzians=True,
+                                                                     init_params=params_poly_lorentzian, use_splitted_masks=False)
 
     fig, axes = plot_dfs_spectroscopy(dfs_spec_hyperfine,
                                       max_column_number=2,
@@ -143,45 +188,96 @@ def main():
                                       plot_fit=True,
                                       plot_deriv=False,
                                       plot_data_with_subtracted_fit=True,
-                                      use_splitted_masks=True,
-                                      use_automated_fit_plot_barrier=True,
+                                      use_splitted_masks=False,
+                                      use_automated_fit_plot_barrier=False,
+                                      use_global_zoom_for_hyperfine=True,
+                                      column_name=column_name,
+                                      masks=masks,
+                                      x_label='frequency [GHz]', y_label='voltage [V]')
+
+    #plt.show()
+    fit_df_spec_hyperfine.to_excel(c.save_hyperfinestructure_path)
+
+    # Fit zoomed hyperfine structure to determine linewidths
+    dfs_spec_hyperfine_zoom = filter_zoomed_spectroscopy(dfs_spec_all,
+                                          return_zoomed=True,
+                                          return_entire=False)
+
+    dfs_spec_hyperfine_zoom = calibrate_voltage_to_freq_scale(dfs_spec_hyperfine_zoom, calibration_factor=calibration_factor, definition_zero=definition_zero)
+
+    dfs_spec_hyperfine_zoom = create_fit_data_from_params(dfs_spec_hyperfine_zoom, 'Aux in [V]', fit_df_spec)
+
+    dfs_spec_hyperfine_zoom = subtract_gaussian_fit(dfs_spec_hyperfine_zoom)
+
+    new_dfs = []
+    for df in dfs_spec_hyperfine_zoom:
+        df, file_name = df
+        df = df.reset_index().drop_duplicates(subset='Frequency [GHz]', keep='first').set_index('Frequency [GHz]')
+        new_dfs.append((df, file_name))
+
+    dfs_spec_hyperfine_zoom = new_dfs
+
+    masks = [[],
+             [],
+             [],
+             []]
+
+    dfs_spec_hyperfine_zoom = mask_dfs(dfs_spec_hyperfine_zoom, all_masks=masks,
+                                  column_to_be_masked=column_name,
+                                  split_masks=False)
+
+    params_poly_lorentzian = [
+        {'number_unique_lorentzians': 6,
+         'lorentzian1_amp': 0.02, 'lorentzian1_gamma': 0.01, 'lorentzian1_off': 0.027, 'lorentzian1_cen': 3.9,
+         'lorentzian2_amp': 0.01, 'lorentzian2_gamma': 0.001, 'lorentzian2_off': 0.03, 'lorentzian2_cen': 3.92,
+         'lorentzian3_amp': 0.05, 'lorentzian3_gamma': 0.01, 'lorentzian3_off': 0.04, 'lorentzian3_cen': 3.935,
+         'lorentzian4_amp': 0.04, 'lorentzian4_gamma': 0.01, 'lorentzian4_off': 0.04, 'lorentzian4_cen': 3.95,
+         'lorentzian5_amp': 0.02, 'lorentzian5_gamma': 0.01, 'lorentzian5_off': 0.02, 'lorentzian5_cen': 3.98,
+         'lorentzian6_amp': 0.01, 'lorentzian6_gamma': 0.001, 'lorentzian6_off': 0.005, 'lorentzian6_cen': 4.025},
+        {'number_unique_lorentzians': 5,
+         'lorentzian1_amp': 0.005, 'lorentzian1_gamma': 0.001, 'lorentzian1_off': 0.016, 'lorentzian1_cen': 1.3955,
+         'lorentzian2_amp': 0.005, 'lorentzian2_gamma': 0.001, 'lorentzian2_off': 0.025, 'lorentzian2_cen': 1.4315,
+         'lorentzian3_amp': 0.02, 'lorentzian3_gamma': 0.01, 'lorentzian3_off': 0.03, 'lorentzian3_cen': 1.46,
+         'lorentzian4_amp': 0.04, 'lorentzian4_gamma': 0.01, 'lorentzian4_off': 0.03, 'lorentzian4_cen': 1.5,
+         'lorentzian5_amp': 0.005, 'lorentzian5_gamma': 0.001, 'lorentzian5_off': 0.02, 'lorentzian5_cen': 1.5676},
+        {'number_unique_lorentzians': 6,
+         'lorentzian1_amp': 0.002, 'lorentzian1_gamma': 0.001, 'lorentzian1_off': 0.001, 'lorentzian1_cen': 6.145,
+         'lorentzian2_amp': 0.007, 'lorentzian2_gamma': 0.01, 'lorentzian2_off': 0.003, 'lorentzian2_cen': 6.18,
+         'lorentzian3_amp': 0.011, 'lorentzian3_gamma': 0.01, 'lorentzian3_off': 0.006, 'lorentzian3_cen': 6.215,
+         'lorentzian4_amp': 0.017, 'lorentzian4_gamma': 0.01, 'lorentzian4_off': 0.009, 'lorentzian4_cen': 6.27,
+         'lorentzian5_amp': 0.02, 'lorentzian5_gamma': 0.01, 'lorentzian5_off': 0.01, 'lorentzian5_cen': 6.31,
+         'lorentzian6_amp': 0.007, 'lorentzian6_gamma': 0.01, 'lorentzian6_off': 0.003, 'lorentzian6_cen': 6.41},
+        {'number_unique_lorentzians': 5,
+         'lorentzian1_amp': 0.001, 'lorentzian1_gamma': 0.005, 'lorentzian1_off': 0.002, 'lorentzian1_cen': 0.13,
+         'lorentzian2_amp': 0.006, 'lorentzian2_gamma': 0.002, 'lorentzian2_off': 0.008, 'lorentzian2_cen': 0.1718,
+         'lorentzian3_amp': 0.015, 'lorentzian3_gamma': 0.01, 'lorentzian3_off': 0.01, 'lorentzian3_cen': 0.23,
+         'lorentzian4_amp': 0.04, 'lorentzian4_gamma': 0.01, 'lorentzian4_off': 0.01, 'lorentzian4_cen': 0.32,
+         'lorentzian5_amp': 0.006, 'lorentzian5_gamma': 0.002, 'lorentzian5_off': 0.001, 'lorentzian5_cen': 0.472}
+    ]
+
+    dfs_spec_hyperfine_zoom, fit_df_spec_hyperfine_zoom = fit_spectroscopy_dfs(dfs_spec_hyperfine_zoom, fct='poly_lorentzian',
+                                                                     column_to_fit=column_name,
+                                                                     use_multiple_lorentzians=True,
+                                                                     init_params=params_poly_lorentzian,
+                                                                     use_splitted_masks=False)
+
+    fig, axes = plot_dfs_spectroscopy(dfs_spec_hyperfine_zoom,
+                                      max_column_number=2,
+                                      fit_data=fit_df_spec_hyperfine_zoom,
+                                      plot_initial=False,
+                                      plot_PDH_out=False,
+                                      plot_fit=True,
+                                      plot_deriv=False,
+                                      plot_data_with_subtracted_fit=True,
+                                      use_splitted_masks=False,
+                                      use_automated_fit_plot_barrier=False,
+                                      use_global_zoom_for_hyperfine=False,
                                       column_name=column_name,
                                       masks=masks,
                                       x_label='frequency [GHz]', y_label='voltage [V]')
 
     plt.show()
-    fit_df_spec_hyperfine = save_linewidth_hyperfinestructure_in_fit_df(fit_df_spec_hyperfine)
-    fit_df_spec_hyperfine.to_excel(c.save_hyperfinestructure_path)
-
-    ## Fit zoomed hyperfine structure to determine linewidths
-    #dfs_spec_hyperfine_zoom = filter_zoomed_spectroscopy(dfs_spec_all,
-    #                                      return_zoomed=True,
-    #                                      return_entire=False)
-#
-    #dfs_spec_hyperfine_zoom = create_fit_data_from_params(dfs_spec_hyperfine_zoom, 'Aux in [V]', fit_df_spec)
-#
-    #dfs_spec_hyperfine_zoom = subtract_gaussian_fit(dfs_spec_hyperfine_zoom)
-#
-    ##dfs_spec_hyperfine_zoom = mask_dfs(dfs_spec_hyperfine_zoom, all_masks=masks,
-    ##                    column_to_be_masked=column_name,
-    ##                    split_masks=True)
-#
-    ##dfs_spec_zoom, fit_df_spec_zoom = fit_spectroscopy_dfs(dfs_spec_zoom, fct='lorentzian', column_to_fit=column_name,
-    ##                                             use_splitted_masks=True, masks=masks)
-#
-    #fig, axes = plot_dfs_spectroscopy(dfs_spec_hyperfine_zoom,
-    #                                  max_column_number=2,
-    #                                  plot_initial=True,
-    #                                  plot_fit=False,
-    #                                  plot_deriv=False,
-    #                                  plot_data_with_subtracted_fit=True,
-    #                                  use_splitted_masks=True,
-    #                                  use_global_zoom_for_hyperfine=False,
-    #                                  column_name=column_name,
-    #                                  masks=masks)
-    #plt.show()
-    ##print(fit_df_spec_zoom)
-    ## fit_df_spec.to_excel(c.save_hyperfinestructure_path_control)
+    #fit_df_spec_hyperfine.to_excel(c.save_hyperfinestructure_path)
 
 if __name__ == '__main__':
     main()

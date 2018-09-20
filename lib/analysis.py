@@ -105,38 +105,22 @@ def recapture_analysis(mean):
 
 def save_temp_from_finestructure_in_fit_df(fit_data):
     sig = fit_data[['sig', 'sig_err']]
+    constants = {'85f2': (c.RB85_MASS, c.RB85_NU0 - 1.77084), '85f3': (c.RB85_MASS, c.RB85_NU0 + 1.26489),
+                 '87f1': (c.RB87_MASS, c.RB87_NU0 - 4.27168), '87f2': (c.RB87_MASS, c.RB87_NU0 + 2.56301    )}
     temps = {}
 
     for index, row in sig.iterrows():
-        if index[:2] == '85':
-            mass = c.RB85_MASS
-        else:
-            mass = c.RB87_MASS
+        mass, nu0 = constants[index]
 
-        # TODO: nu_0 and temp error
-        temp = row['sig'] ** 2 * mass * c.C ** 2 * (1 / c.K_BOLTZMANN)
+        temp = (row['sig']/nu0) ** 2 * mass * c.C ** 2 * (1 / (c.K_BOLTZMANN))
         temp_err = temp * (np.sqrt(2) * row['sig_err'] / row['sig'])
-        temps[index] = [temp, temp_err]
+        sigma_therm_gas = nu0*np.sqrt(c.K_BOLTZMANN*293.15/(mass*c.C**2))
+        temps[index] = [temp, temp_err, sigma_therm_gas]
 
     temp = pd.DataFrame.from_dict(data=temps, orient='index',
                                   columns=['Temperature of atomic sample [K]',
-                                           'Temperature error [K]'])
+                                           'Temperature error [K]',
+                                           'sigma theory thermal gas (293.15 K)'])
 
     fit_data = pd.concat([fit_data, temp], axis=1)
-    return fit_data
-
-
-def save_linewidth_hyperfinestructure_in_fit_df(fit_data):
-    gamma = fit_data[['gamma', 'gamma_err']]
-    fwhms = {}
-
-    for index, row in gamma.iterrows():
-        fwhm = 2 * row['gamma']
-        fwhm_err = 2 * row['gamma_err']
-        fwhms[index] = [fwhm, fwhm_err]
-
-    fwhms = pd.DataFrame.from_dict(data=fwhms, orient='index',
-                                   columns=['FWHM [GHz]',
-                                            'FWHM error [GHz]'])
-    fit_data = pd.concat([fit_data, fwhms], axis=1)
     return fit_data

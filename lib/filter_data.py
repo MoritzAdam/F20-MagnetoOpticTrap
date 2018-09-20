@@ -47,9 +47,9 @@ def calibrate_voltage_to_freq_scale(dfs, calibration_factor, definition_zero):
             df, file_name = df
 
         calibrated_x = c.RB87_FREQ_SEP_THEORY_F1_F2 * (df.index - definition_zero) / calibration_factor
-        df['Frequency [THz]'] = Series(calibrated_x, index=df.index)
+        df['Frequency [GHz]'] = Series(calibrated_x, index=df.index)
         df = df.reset_index(drop=True)
-        df = df.set_index('Frequency [THz]')
+        df = df.set_index('Frequency [GHz]')
 
         if not len(df) == 1:
             calibrated_dfs.append((df, file_name))

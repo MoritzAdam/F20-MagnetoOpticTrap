@@ -40,9 +40,14 @@ RB87_FREQ_SEP_THEORY_F1_F2 = 6.834682610904290  # (90) [GHz]
 K_BOLTZMANN = sc.k
 C = sc.c
 FIT_PLOT_BARRIER = 100
-nu0 = {}
+RB87_NU0 = 384230.4844685 # (62) GHz
+RB85_NU0 = 384230.406373 # (14) GHz
+
 GLOBAL_ZOOM_FOR_HYPERFINE = [(460, -400),
                              (450, -370),
                              (400, -380),
                              (320, -390)]
+
+START_TOKEN = 'START_TOKEN'
+STOP_TOKEN = 'STOP_TOKEN'
 #RB_FINESTRUCTURE_THEORY = {'85f2': }

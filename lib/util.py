@@ -49,6 +49,7 @@ def _multi_masks(df, masks, column_to_be_masked='Aux in [V]'):
         df_masked = _make_excluding_mask(df_masked=df_masked, mask=mask)
 
     df_masked.columns = ['Masked - ' + column_to_be_masked]
+    print(df, df_masked)
     return pd.concat([df, df_masked], axis=1)
 
 
@@ -76,11 +77,23 @@ def _splitted_masks(df, masks, column_to_be_masked='Aux in [V]'):
 
 def _make_excluding_mask(df_masked, mask):
     lower, upper = mask
-    lower = get_nearest_in_dataframe(df_masked, lower)
-    upper = get_nearest_in_dataframe(df_masked, upper)
-    lower_ = df_masked.loc[:lower.name]
-    upper_ = df_masked.loc[lower.name:]
-    upper_ = upper_.loc[upper.name:]
+    if lower == c.START_TOKEN and upper == c.STOP_TOKEN:
+        raise UserWarning('mask can not include complete dataframe at once')
+
+    if lower == c.START_TOKEN:
+        lower_ = df_masked.iloc[:0]
+    else:
+        lower = get_nearest_in_dataframe(df_masked, lower)
+        lower_ = df_masked.loc[:lower.name]
+
+    if upper == c.STOP_TOKEN:
+        upper_ = df_masked.loc[lower.name:]
+        upper_ = upper_.iloc[-1:]
+    else:
+        upper = get_nearest_in_dataframe(df_masked, upper)
+        upper_ = df_masked.iloc[0:]
+        upper_ = upper_.loc[upper.name:]
+
     df_masked = pd.concat([lower_, upper_], axis=0, verify_integrity=False)
     return df_masked
 

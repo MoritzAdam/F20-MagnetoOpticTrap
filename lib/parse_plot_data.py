@@ -41,7 +41,7 @@ def make_spectroscopy_df(path):
     file_names, file_paths = get_txt_csv(path)
     dfs = []
     for file_path, file_name in zip(file_paths, file_names):
-        df = pd.read_table(file_path, header=0, sep='\t', index_col=0)
+        df = pd.read_table(file_path, header=0, sep='\t', index_col=0, dtype=np.float64)
         dfs.append((df, file_name[6:-4]))
     # df = pd.concat(dfs, axis=1)
     return dfs
@@ -74,7 +74,7 @@ def plot_dfs(dfs, style, recapture=None):
 # TODO: split up functions in smaller parts
 def plot_dfs_spectroscopy(dfs, max_column_number, x_label, y_label, fit_data=None, plot_initial=True, plot_PDH_out=False, plot_fit=False,
                           plot_deriv=False, plot_data_with_subtracted_fit=False, plot_hyperfine_fit=False,
-                          use_global_zoom_for_hyperfine=True, subplot_title_addition='', emphasize=None,
+                          use_global_zoom_for_hyperfine=False, subplot_title_addition='', emphasize=None,
                           use_splitted_masks=False, use_automated_fit_plot_barrier=False, column_name='Aux in [V]', masks=None):
     if not use_global_zoom_for_hyperfine:
         zoom = [(0, -1), (0, -1), (0, -1), (0, -1)]
@@ -125,6 +125,7 @@ def plot_dfs_spectroscopy(dfs, max_column_number, x_label, y_label, fit_data=Non
                                   df.loc[:, c.MASK_NAME + column_name + column_extension]
                                   .values[zoom[i][0]:zoom[i][1]],
                                   '.', color='black', markersize=c.PLOT_MARKERSIZE)
+
                     if not use_automated_fit_plot_barrier:
                         lower_fit_plot_barrier = zoom[i][0]
                         upper_fit_plot_barrier = zoom[i][1]
@@ -139,7 +140,14 @@ def plot_dfs_spectroscopy(dfs, max_column_number, x_label, y_label, fit_data=Non
                             raise UserWarning('fit_data has to be provided if use_automated_fit_plot_barrier is True')
 
                         cen = fit_data.loc[file_name + column_extension, 'cen']
-                        gamma = fit_data.loc[file_name + column_extension, 'gamma']
+
+                        try:
+                            gamma = fit_data.loc[file_name + column_extension, 'gamma']
+                        except:
+                            try:
+                                gamma = fit_data.loc[file_name + column_extension, 'sig']
+                            except:
+                                raise UserWarning('use_automated_fit_plot_barrier can not find key')
 
                         lower_fit_plot_barrier = get_nearest_in_dataframe(df, cen - 7 * gamma).name
                         upper_fit_plot_barrier = get_nearest_in_dataframe(df, cen + 7 * gamma).name
@@ -152,10 +160,16 @@ def plot_dfs_spectroscopy(dfs, max_column_number, x_label, y_label, fit_data=Non
                     count += 1
 
             else:
-                axis[i].plot(df.index, df.loc[:, c.MASK_NAME + column_name].values, '.', color='black',
+                if plot_data_with_subtracted_fit:
+                    ax = add_axis
+                else:
+                    ax = axis[i]
+                ax.plot(df.index[zoom[i][0]:zoom[i][1]], df.loc[:, c.MASK_NAME + column_name].values[zoom[i][0]:zoom[i][1]], '.', color='black',
                              markersize=c.PLOT_MARKERSIZE)
-                axis[i].plot(df.index, df.loc[:, 'Best fit - ' + column_name].values, '-', color='r', alpha=0.7,
+                ax.plot(df.index[zoom[i][0]:zoom[i][1]], df.loc[:, 'Best fit - ' + column_name].values[zoom[i][0]:zoom[i][1]], '-', color='r', alpha=0.7,
                              markersize=c.PLOT_MARKERSIZE)
+
+
 
         if plot_hyperfine_fit:
             if not plot_data_with_subtracted_fit:
