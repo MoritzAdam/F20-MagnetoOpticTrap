@@ -74,7 +74,7 @@ def plot_dfs(dfs, style, recapture=None):
 # TODO: split up functions in smaller parts
 def plot_dfs_spectroscopy(dfs, max_column_number, x_label, y_label, fit_data=None, plot_initial=True, plot_PDH_out=False, plot_fit=False,
                           plot_deriv=False, plot_data_with_subtracted_fit=False, plot_hyperfine_fit=False,
-                          use_global_zoom_for_hyperfine=False, subplot_title_addition='', emphasize=None,
+                          use_global_zoom_for_hyperfine=False, subplot_title_addition='', emphasize=None, usable_lorentz=None, highlighted_lorentz=None,
                           use_splitted_masks=False, use_automated_fit_plot_barrier=False, column_name='Aux in [V]', masks=None, crossings=False):
     if not use_global_zoom_for_hyperfine:
         zoom = [(0, -1), (0, -1), (0, -1), (0, -1)]
@@ -192,11 +192,21 @@ def plot_dfs_spectroscopy(dfs, max_column_number, x_label, y_label, fit_data=Non
 
                 string_count = 0
                 labels = np.array(['a', 'b', 'c', 'd', 'e', 'f', 'g'])
-                for n in range(len(centers)):
-                    ax.text(fit_data.loc[file_name, centers[n]],
+                if usable_lorentz is not None:
+                    for n in range(usable_lorentz[i]):
+                        ax.text(fit_data.loc[file_name, centers[n]],
                             np.min(np.asarray(df.loc[:, 'Best fit - ' + column_name].values[zoom[i][0]:zoom[i][1]])),
                             labels[string_count] + ')')
-                    string_count += 1
+                        string_count += 1
+                else:
+                    for n in range(len(centers)):
+                        ax.text(fit_data.loc[file_name, centers[n]],
+                            np.min(np.asarray(df.loc[:, 'Best fit - ' + column_name].values[zoom[i][0]:zoom[i][1]])),
+                            labels[string_count] + ')')
+                        string_count += 1
+                if highlighted_lorentz is not None:
+                    for n in range(len(highlighted_lorentz[i])):
+                        ax.axvline(fit_data['lorentzian{}_cen'.format(highlighted_lorentz[i][n])].iloc[i], color='black')
 
 
 

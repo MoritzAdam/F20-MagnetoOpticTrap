@@ -51,7 +51,7 @@ RB85_NU0 = 384230.406373 # (14) GHz
 GLOBAL_ZOOM_FOR_HYPERFINE = [(460, -400),
                              (450, -370),
                              (400, -380),
-                             (320, -390)]
+                             (290, -390)]
 
 START_TOKEN = 'START_TOKEN'
 STOP_TOKEN = 'STOP_TOKEN'

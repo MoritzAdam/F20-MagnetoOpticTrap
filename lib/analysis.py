@@ -118,17 +118,3 @@ def save_temp_from_finestructure_in_fit_df(fit_data):
 
     fit_data = pd.concat([fit_data, temp], axis=1)
     return fit_data
-
-def get_zero_crossings(dfs_spec, params_crossing):
-    crossings = []
-    for i in range(0,len(dfs_spec)):
-        df = dfs_spec[i][0]
-        df = df.reset_index().drop_duplicates(subset='Frequency [THz]', keep='first').set_index('Frequency [THz]')
-        values = df['Aux in [V]'].values
-        make_crossings = np.array([])
-        for j in range(0, len(params_crossing[i])):
-            k_mean = df.index.get_loc(params_crossing[i][j], 'nearest')
-            k_max = np.argmax(values[k_mean-10:k_mean+10])
-            make_crossings = np.append(make_crossings, df.index[k_max+k_mean-10])
-        crossings.append(make_crossings)
-    return crossings

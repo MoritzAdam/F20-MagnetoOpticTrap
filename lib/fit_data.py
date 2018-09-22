@@ -127,7 +127,8 @@ def _initialize_fit_data_df(fct, dfs, use_splitted_masks=False, masks=None, numb
             fit_params['lorentzian{}_amp'.format(i)] = []
             fit_params['lorentzian{}_cen'.format(i)] = []
             fit_params['lorentzian{}_gamma'.format(i)] = []
-            fit_params['lorentzian{}_off'.format(i)] = []
+        fit_params['linear1_intercept'] = []
+        fit_params['linear1_slope'] = []
 
     for key in list(fit_params.keys()):
         fit_params[key + '_err'] = []
@@ -281,12 +282,13 @@ def poly_gaussian():
     return model
 
 
-def lorentzian(x, amp, cen, gamma, off):
-    return amp / (np.pi * gamma) * 1 / (1 + (x-cen)**2 / gamma**2) + off
+def lorentzian(x, amp, cen, gamma):
+    return amp / (np.pi * gamma) * 1 / (1 + (x-cen)**2 / gamma**2)
 
 
 def poly_lorentzian(number_unique_lorentzians=None):
     model = Model(lorentzian, independent_vars=['x'], prefix='lorentzian1_')
+    model += LinearModel(independent_vars=['x'], prefix='linear1_')
     if number_unique_lorentzians is None:
         raise UserWarning('number_unique_lorentzians need to be given')
     for i in range(2, number_unique_lorentzians + 1):

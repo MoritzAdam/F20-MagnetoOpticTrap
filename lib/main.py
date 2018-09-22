@@ -11,11 +11,12 @@ from lib.filter_data import filter_loading, filter_zoomed_spectroscopy, \
     calibrate_voltage_to_freq_scale, filter_recapture, subtract_gaussian_fit
 from lib.analysis import loading_analysis, recapture_analysis
 from lib.fit_data import fit_loading_dfs
-from lib.analysis import loading_analysis, calculate_mean, save_temp_from_finestructure_in_fit_df, get_zero_crossings
+from lib.analysis import loading_analysis, calculate_mean, save_temp_from_finestructure_in_fit_df
 from lib.fit_data import fit_loading_dfs, fit_spectroscopy_dfs, create_fit_data_from_params, gaussian
 
 
 def main():
+    """
     # Loading rates
     plt_style = ['$detuning = $', c.DETUNING_DICT, '$ \ Mhz$',  # Title, 1: start, 2: link of the dict, 3: end
                '$intensity \ [a.u.]$',  # ylabel
@@ -53,7 +54,7 @@ def main():
     # Analysis of the recapture experiment
     recapture_analysis(mean)
     plt.show()
-
+    """
     # Loading spectroscopy data
     dfs_spec = make_spectroscopy_df(c.spectroscopy_path)
     #fig, axes = plot_dfs_spectroscopy(dfs_spec, max_column_number=3, plot_PDH_out=True, plot_fit=False)
@@ -140,9 +141,9 @@ def main():
     #         [(6.16, 6.20), (6.205, 6.25), (6.26, 6.29), (6.30, 6.34)],
     #         [(0.155, 0.195), (0.22, 0.27), (0.29, 0.34)]]
     masks = [[(c.START_TOKEN, 3.85), (4.05, c.STOP_TOKEN)],
-             [(c.START_TOKEN, 1.38), (1.60, c.STOP_TOKEN)],
+             [(c.START_TOKEN, 1.37), (1.65, c.STOP_TOKEN)],
              [(c.START_TOKEN, 6.07), (6.45, c.STOP_TOKEN)],
-             [(c.START_TOKEN, 0.11), (0.50, c.STOP_TOKEN)]]
+             [(c.START_TOKEN, 0.06), (0.5, c.STOP_TOKEN)]]
 
     dfs_spec_hyperfine = mask_dfs(dfs_spec_hyperfine, all_masks=masks,
                         column_to_be_masked=column_name,
@@ -150,37 +151,43 @@ def main():
 
     params_poly_lorentzian = [
         {'number_unique_lorentzians': 6,
-        'lorentzian1_amp': 0.02, 'lorentzian1_gamma': 0.01, 'lorentzian1_off': 0.027, 'lorentzian1_cen': 3.9,
-         'lorentzian2_amp': 0.01, 'lorentzian2_gamma': 0.001, 'lorentzian2_off': 0.03, 'lorentzian2_cen': 3.92,
-         'lorentzian3_amp': 0.05, 'lorentzian3_gamma': 0.01, 'lorentzian3_off': 0.04, 'lorentzian3_cen': 3.935,
-         'lorentzian4_amp': 0.04, 'lorentzian4_gamma': 0.01, 'lorentzian4_off': 0.04, 'lorentzian4_cen': 3.95,
-         'lorentzian5_amp': 0.02, 'lorentzian5_gamma': 0.01, 'lorentzian5_off': 0.02, 'lorentzian5_cen': 3.98,
-         'lorentzian6_amp': 0.01, 'lorentzian6_gamma': 0.001, 'lorentzian6_off': 0.005, 'lorentzian6_cen': 4.025},
-        {'number_unique_lorentzians': 5,
-         'lorentzian1_amp': 0.005, 'lorentzian1_gamma': 0.001, 'lorentzian1_off': 0.016, 'lorentzian1_cen': 1.3955,
-         'lorentzian2_amp': 0.005, 'lorentzian2_gamma': 0.001, 'lorentzian2_off': 0.025, 'lorentzian2_cen': 1.4315,
-         'lorentzian3_amp': 0.02, 'lorentzian3_gamma': 0.01, 'lorentzian3_off': 0.03, 'lorentzian3_cen': 1.46,
-         'lorentzian4_amp': 0.04, 'lorentzian4_gamma': 0.01, 'lorentzian4_off': 0.03, 'lorentzian4_cen': 1.5,
-         'lorentzian5_amp': 0.005, 'lorentzian5_gamma': 0.001, 'lorentzian5_off': 0.02, 'lorentzian5_cen': 1.5676},
+        'lorentzian1_amp': 0.02, 'lorentzian1_gamma': 0.01, 'lorentzian1_cen': 3.9,
+         'lorentzian2_amp': 0.01, 'lorentzian2_gamma': 0.001, 'lorentzian2_cen': 3.92,
+         'lorentzian3_amp': 0.05, 'lorentzian3_gamma': 0.01, 'lorentzian3_cen': 3.935,
+         'lorentzian4_amp': 0.04, 'lorentzian4_gamma': 0.01, 'lorentzian4_cen': 3.95,
+         'lorentzian5_amp': 0.02, 'lorentzian5_gamma': 0.01, 'lorentzian5_cen': 3.98,
+         'lorentzian6_amp': 0.01, 'lorentzian6_gamma': 0.001, 'lorentzian6_cen': 4.025,
+         'linear1_intercept': 0, 'linear1_slope': 0},
         {'number_unique_lorentzians': 6,
-         'lorentzian1_amp': 0.002, 'lorentzian1_gamma': 0.001, 'lorentzian1_off': 0.001, 'lorentzian1_cen': 6.145,
-         'lorentzian2_amp': 0.007, 'lorentzian2_gamma': 0.01, 'lorentzian2_off': 0.003, 'lorentzian2_cen': 6.18,
-         'lorentzian3_amp': 0.011, 'lorentzian3_gamma': 0.01, 'lorentzian3_off': 0.006, 'lorentzian3_cen': 6.215,
-         'lorentzian4_amp': 0.017, 'lorentzian4_gamma': 0.01, 'lorentzian4_off': 0.009, 'lorentzian4_cen': 6.27,
-         'lorentzian5_amp': 0.02, 'lorentzian5_gamma': 0.01, 'lorentzian5_off': 0.01, 'lorentzian5_cen': 6.31,
-         'lorentzian6_amp': 0.007, 'lorentzian6_gamma': 0.01, 'lorentzian6_off': 0.003, 'lorentzian6_cen': 6.41},
-        {'number_unique_lorentzians': 5,
-         'lorentzian1_amp': 0.001, 'lorentzian1_gamma': 0.005, 'lorentzian1_off': 0.002, 'lorentzian1_cen': 0.13,
-         'lorentzian2_amp': 0.006, 'lorentzian2_gamma': 0.002, 'lorentzian2_off': 0.008, 'lorentzian2_cen': 0.1718,
-         'lorentzian3_amp': 0.015, 'lorentzian3_gamma': 0.01, 'lorentzian3_off': 0.01, 'lorentzian3_cen': 0.23,
-         'lorentzian4_amp': 0.04, 'lorentzian4_gamma': 0.01, 'lorentzian4_off': 0.01, 'lorentzian4_cen': 0.32,
-         'lorentzian5_amp': 0.006, 'lorentzian5_gamma': 0.002, 'lorentzian5_off': 0.001, 'lorentzian5_cen': 0.472}
-    ]
+         'lorentzian1_amp': 0.005, 'lorentzian1_gamma': 0.005, 'lorentzian1_cen': 1.3955,
+         'lorentzian2_amp': 0.005, 'lorentzian2_gamma': 0.006, 'lorentzian2_cen': 1.4315,
+         'lorentzian3_amp': 0.02, 'lorentzian3_gamma': 0.007, 'lorentzian3_cen': 1.46,
+         'lorentzian4_amp': 0.001, 'lorentzian4_gamma': 0.008, 'lorentzian4_cen': 1.50,
+         'lorentzian5_amp': 0.0009, 'lorentzian5_gamma': 0.007, 'lorentzian5_cen': 1.57,
+         'lorentzian6_amp': 0.009, 'lorentzian6_gamma': 0.07994732, 'lorentzian6_cen': 1.55, #lorentz6 only for help
+         'linear1_intercept': 0.01, 'linear1_slope': 0},
+        {'number_unique_lorentzians': 6,
+         'lorentzian1_amp': 0.002, 'lorentzian1_gamma': 0.001, 'lorentzian1_cen': 6.145,
+         'lorentzian2_amp': 0.007, 'lorentzian2_gamma': 0.01, 'lorentzian2_cen': 6.18,
+         'lorentzian3_amp': 0.011, 'lorentzian3_gamma': 0.01, 'lorentzian3_cen': 6.215,
+         'lorentzian4_amp': 0.017, 'lorentzian4_gamma': 0.01, 'lorentzian4_cen': 6.27,
+         'lorentzian5_amp': 0.02, 'lorentzian5_gamma': 0.01, 'lorentzian5_cen': 6.31,
+         'lorentzian6_amp': 0.007, 'lorentzian6_gamma': 0.01, 'lorentzian6_cen': 6.41,
+         'linear1_intercept': 0, 'linear1_slope': 0},
+        {'number_unique_lorentzians': 6,
+         'lorentzian1_amp': 0.0004, 'lorentzian1_gamma': 0.006, 'lorentzian1_cen': 0.09,
+         'lorentzian2_amp': 0.0004, 'lorentzian2_gamma': 0.006, 'lorentzian2_cen': 0.171,
+         'lorentzian3_amp': 0.0004, 'lorentzian3_gamma': 0.008, 'lorentzian3_cen': 0.23,
+         'lorentzian4_amp': 0.001, 'lorentzian4_gamma': 0.008, 'lorentzian4_cen': 0.32,
+         'lorentzian5_amp': 0.0004, 'lorentzian5_gamma': 0.006, 'lorentzian5_cen': 0.48,
+         'lorentzian6_amp': 94.970, 'lorentzian6_gamma': 0.5848, 'lorentzian6_cen': 0.476, #lorentz6 only for help
+         'linear1_intercept': 0.1, 'linear1_slope': 0}]
 
     dfs_spec_hyperfine, fit_df_spec_hyperfine = fit_spectroscopy_dfs(dfs_spec_hyperfine, fct='poly_lorentzian',
                                                                      column_to_fit=column_name, use_multiple_lorentzians=True,
                                                                      init_params=params_poly_lorentzian, use_splitted_masks=False)
-
+    highlighted_lorentz=[[2,5],[2,5],[1,3,6],[2,5]]
+    usable_lorentz = [5,5,6,5]
     fig, axes = plot_dfs_spectroscopy(dfs_spec_hyperfine,
                                       max_column_number=2,
                                       fit_data=fit_df_spec_hyperfine,
@@ -194,11 +201,13 @@ def main():
                                       use_global_zoom_for_hyperfine=True,
                                       column_name=column_name,
                                       masks=masks,
+                                      usable_lorentz=usable_lorentz,
+                                      highlighted_lorentz=highlighted_lorentz,
                                       x_label='frequency [GHz]', y_label='voltage [V]')
 
-    #plt.show()
+    plt.show()
     fit_df_spec_hyperfine.to_excel(c.save_hyperfinestructure_path)
-
+    """
     # Fit zoomed hyperfine structure to determine linewidths
     dfs_spec_hyperfine_zoom = filter_zoomed_spectroscopy(dfs_spec_all,
                                           return_zoomed=True,
@@ -239,25 +248,29 @@ def main():
          'lorentzian3_amp': 0.05, 'lorentzian3_gamma': 0.01, 'lorentzian3_off': 0.04, 'lorentzian3_cen': 3.935,
          'lorentzian4_amp': 0.04, 'lorentzian4_gamma': 0.01, 'lorentzian4_off': 0.04, 'lorentzian4_cen': 3.95,
          'lorentzian5_amp': 0.02, 'lorentzian5_gamma': 0.01, 'lorentzian5_off': 0.02, 'lorentzian5_cen': 3.98,
-         'lorentzian6_amp': 0.01, 'lorentzian6_gamma': 0.001, 'lorentzian6_off': 0.005, 'lorentzian6_cen': 4.025},
+         'lorentzian6_amp': 0.01, 'lorentzian6_gamma': 0.001, 'lorentzian6_off': 0.005, 'lorentzian6_cen': 4.025,
+         'linear1_intercept': 0, 'linear1_slope': 0},
         {'number_unique_lorentzians': 5,
          'lorentzian1_amp': 0.005, 'lorentzian1_gamma': 0.001, 'lorentzian1_off': 0.016, 'lorentzian1_cen': 1.178,
          'lorentzian2_amp': 0.005, 'lorentzian2_gamma': 0.001, 'lorentzian2_off': 0.025, 'lorentzian2_cen': 1.215,
          'lorentzian3_amp': 0.02, 'lorentzian3_gamma': 0.01, 'lorentzian3_off': 0.03, 'lorentzian3_cen': 1.25,
          'lorentzian4_amp': 0.04, 'lorentzian4_gamma': 0.01, 'lorentzian4_off': 0.03, 'lorentzian4_cen': 1.285,
-         'lorentzian5_amp': 0.005, 'lorentzian5_gamma': 0.001, 'lorentzian5_off': 0.02, 'lorentzian5_cen': 1.358},
+         'lorentzian5_amp': 0.005, 'lorentzian5_gamma': 0.001, 'lorentzian5_off': 0.02, 'lorentzian5_cen': 1.358,
+         'linear1_intercept': 0, 'linear1_slope': 0},
         {'number_unique_lorentzians': 5,
          'lorentzian1_amp': 0.007, 'lorentzian1_gamma': 0.01, 'lorentzian1_off': 0.003, 'lorentzian1_cen': 6.18,
          'lorentzian2_amp': 0.011, 'lorentzian2_gamma': 0.01, 'lorentzian2_off': 0.006, 'lorentzian2_cen': 6.215,
          'lorentzian3_amp': 0.017, 'lorentzian3_gamma': 0.01, 'lorentzian3_off': 0.009, 'lorentzian3_cen': 6.27,
          'lorentzian4_amp': 0.02, 'lorentzian4_gamma': 0.01, 'lorentzian4_off': 0.01, 'lorentzian4_cen': 6.31,
-         'lorentzian5_amp': 0.018, 'lorentzian5_gamma': 0.02, 'lorentzian5_off': 0.005, 'lorentzian5_cen': 6.387},
+         'lorentzian5_amp': 0.018, 'lorentzian5_gamma': 0.02, 'lorentzian5_off': 0.005, 'lorentzian5_cen': 6.387,
+         'linear1_intercept': 0, 'linear1_slope': 0},
         {'number_unique_lorentzians': 5,
          'lorentzian1_amp': 0.001, 'lorentzian1_gamma': 0.005, 'lorentzian1_off': 0.002, 'lorentzian1_cen': -0.023,
          'lorentzian2_amp': 0.006, 'lorentzian2_gamma': 0.002, 'lorentzian2_off': 0.008, 'lorentzian2_cen': 0.065,
          'lorentzian3_amp': 0.015, 'lorentzian3_gamma': 0.01, 'lorentzian3_off': 0.01, 'lorentzian3_cen': 0.13,
          'lorentzian4_amp': 0.04, 'lorentzian4_gamma': 0.01, 'lorentzian4_off': 0.01, 'lorentzian4_cen': 0.218,
-         'lorentzian5_amp': 0.006, 'lorentzian5_gamma': 0.002, 'lorentzian5_off': 0.001, 'lorentzian5_cen': 0.373}
+         'lorentzian5_amp': 0.006, 'lorentzian5_gamma': 0.002, 'lorentzian5_off': 0.001, 'lorentzian5_cen': 0.373,
+         'linear1_intercept': 0, 'linear1_slope': 0}
     ]
 
     dfs_spec_hyperfine_zoom, fit_df_spec_hyperfine_zoom = fit_spectroscopy_dfs(dfs_spec_hyperfine_zoom, fct='poly_lorentzian',
@@ -283,34 +296,6 @@ def main():
 
     plt.show()
     #fit_df_spec_hyperfine.to_excel(c.save_hyperfinestructure_zoom_path)
-
-    # Hyperfine splitting
-    dfs_spec_zoomed = dfs_spec
-    dfs_spec_zoomed = filter_zoomed_spectroscopy(dfs_spec_zoomed, return_zoomed=True, return_entire=False)
-    dfs_spec_zoomed = calibrate_voltage_to_freq_scale(dfs_spec_zoomed,
-                                                      calibration_factor=calibration_factor,
-                                                      definition_zero=definition_zero)
-
-    for i in [0, 2, 3]:
-        dfs_spec_zoomed[i][0]['Aux in [V]'] = dfs_spec_zoomed[i][0].loc[:, 'Aux in [V]'].values - \
-                                              gaussian(dfs_spec_zoomed[i][0].index.values, fit_df_spec.iloc[i, 0],
-                                                       fit_df_spec.iloc[i, 2], fit_df_spec.iloc[i, 4],
-                                                       fit_df_spec.iloc[i, 6])
-
-    params_crossings = [[3.895,3.915,3.935,3.95,3.985],[1.18,1.22,1.25,1.285,1.355],[6.175,6.21,6.26,6.3,6.38],
-                        [-0.02,0.075,0.13,0.22,0.375]]
-    crossings = get_zero_crossings(dfs_spec_zoomed, params_crossings)
-    crossings_err = np.abs(np.subtract(crossings, params_crossings))
-    df_crossings = pd.DataFrame(data=crossings, index=[x[1][:4] for x in dfs_spec_zoomed])
-    df_crossings = pd.concat([df_crossings, pd.DataFrame(data=crossings_err, index=[x[1][:4]+'_err' for x in dfs_spec_zoomed])])
-    #df_crossings.to_excel(c.save_crossings)
-    crossings.append([1,4])
-    crossings.append([1,4])
-    crossings.append([1,4])
-    crossings.append([1,4])
-    print(df_crossings)
-    plot_dfs_spectroscopy(dfs_spec_zoomed, max_column_number=2, plot_PDH_out=True, plot_fit=False, crossings=crossings)
-    plt.show()
-
+    """
 if __name__ == '__main__':
     main()
