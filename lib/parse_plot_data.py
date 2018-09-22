@@ -4,6 +4,7 @@ import pandas as pd
 import os
 import lib.constants as c
 from math import ceil
+from string import ascii_lowercase
 from lib.util import get_nearest_in_dataframe, _remove_nan_from_masked_column
 
 def import_dict(str):
@@ -60,11 +61,11 @@ def plot_dfs(dfs, style, recapture=None):
         if recapture is not None:
             axes[i].plot(df.index, recapture[0][i]*np.ones(len(df.index)), '--', color=c.GREEN)
             axes[i].plot(df.index, recapture[1][i]*np.ones(len(df.index)), '--', color=c.GREEN)
-        axes[i].set_title(style[0]+str(dict[df.columns[0]])+style[2], fontweight='semibold', size='10')
+        axes[i].set_title(style[0]+str(dict[df.columns[0]])+style[2], fontsize='10')
     for i in range(0, plot_columns):
-        axes[i*4].set_ylabel(style[3], style='italic')
+        axes[i*4].set_ylabel(style[3])
     for i in range(4*plot_columns-4, 4*plot_columns):
-        axes[i].set_xlabel(style[4], style='italic')
+        axes[i].set_xlabel(style[4])
     for i in range(len(dfs),4*plot_columns):
         axes[i].set_visible(False)
     plt.tight_layout()
@@ -74,7 +75,7 @@ def plot_dfs(dfs, style, recapture=None):
 def plot_dfs_spectroscopy(dfs, max_column_number, x_label, y_label, fit_data=None, plot_initial=True, plot_PDH_out=False, plot_fit=False,
                           plot_deriv=False, plot_data_with_subtracted_fit=False, plot_hyperfine_fit=False,
                           use_global_zoom_for_hyperfine=False, subplot_title_addition='', emphasize=None,
-                          use_splitted_masks=False, use_automated_fit_plot_barrier=False, column_name='Aux in [V]', masks=None):
+                          use_splitted_masks=False, use_automated_fit_plot_barrier=False, column_name='Aux in [V]', masks=None, crossings=False):
     if not use_global_zoom_for_hyperfine:
         zoom = [(0, -1), (0, -1), (0, -1), (0, -1)]
     else:
@@ -107,6 +108,18 @@ def plot_dfs_spectroscopy(dfs, max_column_number, x_label, y_label, fit_data=Non
 
         if plot_PDH_out:
             add_axis.plot(df.index, df.loc[:, 'PDH out [a.u.]'].values, '.', color='grey', alpha=0.3, markersize=c.PLOT_MARKERSIZE)
+
+        if crossings:
+            for j in range(0, len(crossings[i])):
+                realline1=crossings[i+4][0]
+                realline2=crossings[i+4][1]
+                if j == realline1 or j == realline2:
+                    axis[i].axvline(x=crossings[i][j], color='r')
+                else:
+                    axis[i].axvline(x=crossings[i][j], color='black')
+                y_val = (np.max(df.values[:, 0])+np.mean(df.values[:, 0]))/2
+                axis[i].annotate(s='', xy=(crossings[i][realline2], y_val), xytext=(crossings[i][realline1], y_val), arrowprops=dict(arrowstyle='<->', color='r'))
+                axis[i].text(crossings[i][j], (np.min(df.values[:, 0])+np.mean(df.values[:, 0]))/2, s=' '+ascii_lowercase[j]+')')
 
         if plot_data_with_subtracted_fit:
             add_axis.plot(df.index[zoom[i][0]:zoom[i][1]],

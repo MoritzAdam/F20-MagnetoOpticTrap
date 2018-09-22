@@ -37,14 +37,9 @@ def loading_analysis(fit_df):
     axis[0].errorbar(det_arr, L, xerr=c.DETUNING_ERROR, yerr=err_L, fmt='.', color=c.BLUE)
     axis[1].errorbar(det_arr, alpha, xerr=c.DETUNING_ERROR, yerr=err_alpha, fmt='.', color=c.RED)
     axis[2].errorbar(det_arr, N, yerr=err_N, xerr=c.DETUNING_ERROR, fmt='.', color=c.GREEN)
-    axis[2].set_xlabel('detuning [MHz]', style='italic')
-    axis[2].set_ylabel('N', style='italic')
-    axis[2].set_title('particle numbers', fontweight='semibold')
-    axis[1].set_ylabel(r'$ \alpha $ [1/s]', style='italic')
-    axis[1].set_title('loss coefficient', fontweight='semibold')
-    axis[0].set_ylabel('L [1/s]', style='italic')
-    axis[0].set_title('loading rate', fontweight='semibold')
-    return fig, axis
+    axis[2].set(xlabel='$detuning \ [MHz]$', ylabel='$N$', title='$particle \ number$')
+    axis[1].set(ylabel=r'$ \alpha \ [1/s]$', title='$loss \ coefficient$')
+    axis[0].set(ylabel='$L \ [1/s]$', title='loading rate')
 
 
 def calculate_mean(fit_df, dfs):
@@ -88,19 +83,18 @@ def recapture_analysis(mean):
 
     popt, pcov = curve_fit(fitfunction, duration, frac)
     param = popt[0]
-    err_param = pcov[0][0]
-    temp = (c.MOT_RADIUS / param) ** 2 * c.RB85_MASS * 1e6 / const.k  # Temperature in K
-    err_temp = err_param / param * temp
+    err_param = np.sqrt(np.diag(pcov))[0]
+    temp = (c.MOT_RADIUS/param)**2*c.RB85_MASS*1e6/const.k  # Temperature in K
+    err_temp = err_param/param*temp
+    print('temperature in K: {}, error: {}'.format(temp, err_temp))
 
     # Plot data
     plt.errorbar(duration, frac, yerr=err_frac, fmt='.', label='data point', color=c.BLUE)
     plt.plot(duration, fitfunction(duration, popt[0]), label='fit model', color=c.RED)
     plt.legend()
-    plt.title('Analysis of the Release and Recapture experiment', fontweight='semibold')
-    plt.xlabel('down time [ms]', style='italic')
-    plt.ylabel('$N/N_0$', style='italic')
-    plt.text(68, 0.85, 'temperature = ' + str(int(round((temp * 1e6), 0))) + '$ \pm $' + str(
-        int(round(err_temp * 1e6, 0))) + ' $\mu$K')
+    plt.xlabel('$down \ time \ [ms]$')
+    plt.ylabel('$N/N_0$')
+    plt.text(68, 0.85, 'temperature = '+str(int(round((temp*1e6),0)))+'$ \pm $'+str(int(round(err_temp*1e6,0)))+' $\mu$K')
 
 
 def save_temp_from_finestructure_in_fit_df(fit_data):
@@ -124,3 +118,17 @@ def save_temp_from_finestructure_in_fit_df(fit_data):
 
     fit_data = pd.concat([fit_data, temp], axis=1)
     return fit_data
+
+def get_zero_crossings(dfs_spec, params_crossing):
+    crossings = []
+    for i in range(0,len(dfs_spec)):
+        df = dfs_spec[i][0]
+        df = df.reset_index().drop_duplicates(subset='Frequency [THz]', keep='first').set_index('Frequency [THz]')
+        values = df['Aux in [V]'].values
+        make_crossings = np.array([])
+        for j in range(0, len(params_crossing[i])):
+            k_mean = df.index.get_loc(params_crossing[i][j], 'nearest')
+            k_max = np.argmax(values[k_mean-10:k_mean+10])
+            make_crossings = np.append(make_crossings, df.index[k_max+k_mean-10])
+        crossings.append(make_crossings)
+    return crossings

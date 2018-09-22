@@ -1,4 +1,5 @@
 import numpy as np
+import pandas as pd
 import os
 import matplotlib.pyplot as plt
 import lib.constants as c
@@ -10,49 +11,48 @@ from lib.filter_data import filter_loading, filter_zoomed_spectroscopy, \
     calibrate_voltage_to_freq_scale, filter_recapture, subtract_gaussian_fit
 from lib.analysis import loading_analysis, recapture_analysis
 from lib.fit_data import fit_loading_dfs
-from lib.analysis import loading_analysis, calculate_mean, save_temp_from_finestructure_in_fit_df
-from lib.fit_data import fit_loading_dfs, fit_spectroscopy_dfs, create_fit_data_from_params
+from lib.analysis import loading_analysis, calculate_mean, save_temp_from_finestructure_in_fit_df, get_zero_crossings
+from lib.fit_data import fit_loading_dfs, fit_spectroscopy_dfs, create_fit_data_from_params, gaussian
 
 
 def main():
     # Loading rates
-    plt_style = ['detuning = ', c.DETUNING_DICT, ' Mhz',  # Title, 1: start, 2: link of the dict, 3: end
-               'intensity [a.u.]',  # ylabel
-               'time [s]']  # xlabel
+    plt_style = ['$detuning = $', c.DETUNING_DICT, '$ \ Mhz$',  # Title, 1: start, 2: link of the dict, 3: end
+               '$intensity \ [a.u.]$',  # ylabel
+               '$time \ [s]$']  # xlabel
     dfs = make_oscilloscope_df(c.loading_path)
     plot_dfs(dfs, plt_style)
-    #plt.show()
+    plt.show()
 
     # Filtering values that are equal to the minimum value and Fitting loading curves
     dfs = filter_loading(dfs, rolling=10)
     dfs_fit, fit_df = fit_loading_dfs(dfs, offset_on=False)
     plot_dfs(dfs_fit, plt_style)
-    #plt.show()
-    fit_df.to_excel(c.save_loading_path)
+    plt.show()
 
     # Analysis of the loading curves
     loading_analysis(fit_df)
-    #plt.show()
+    plt.show()
 
     # Release, Recapture
-    plt_style_rr = ['down time = ', c.DURATION_DICT, ' ms',  # Title, 1: start, 2: link of the dict, 3: end
-               'intensity [a.u.]',  # ylabel
-               'time [s]']  # xlabel
+    plt_style_rr = ['$down time = $', c.DURATION_DICT, '$ \ ms$',  # Title, 1: start, 2: link of the dict, 3: end
+               '$intensity \ [a.u.]$',  # ylabel
+               '$time \ [s]$']  # xlabel
     dfs_rr = make_oscilloscope_df(c.temperature_path)
     plot_dfs(dfs_rr, plt_style_rr)
-    #plt.show()
+    plt.show()
 
     # Filtering Release, Recapture data and Fit
     dfs_rr = filter_recapture(dfs_rr)
     dfs_fit_rr, fit_df_rr = fit_loading_dfs(dfs_rr, offset_on=True)
     mean = calculate_mean(fit_df_rr, dfs_rr)
     plot_dfs(dfs_fit_rr, plt_style_rr, recapture=mean)
-    #plt.show()
-    fit_df_rr.to_excel(c.save_rr_path)
+    plt.show()
+    #fit_df_rr.to_excel(c.save_rr_path)
 
     # Analysis of the recapture experiment
     recapture_analysis(mean)
-    #plt.show()
+    plt.show()
 
     # Loading spectroscopy data
     dfs_spec = make_spectroscopy_df(c.spectroscopy_path)
@@ -81,7 +81,7 @@ def main():
                                       plot_fit=True,
                                       fit_data=fit_df_compl_spec,
                                       x_label='voltage out [V]', y_label='voltage in [V]')
-    #plt.show()
+    plt.show()
 
     calibration_factor, calibration_factor_err = get_multiplet_separation(fit_df_compl_spec,
                                                                           left=1,
@@ -90,7 +90,7 @@ def main():
     print('calibration factor: {}, zero definition: {}'.format(calibration_factor, definition_zero))
 
     df_multiplet_sep = get_multiplet_df(fit_df_compl_spec)
-    df_multiplet_sep.to_excel(c.save_multiplet_path)
+    #df_multiplet_sep.to_excel(c.save_multiplet_path)
 
     # Gaussian fits of the transitions (unzoomed)
     dfs_spec_all = dfs_spec.copy()
@@ -282,7 +282,35 @@ def main():
                                       x_label='frequency [GHz]', y_label='voltage [V]')
 
     plt.show()
-    fit_df_spec_hyperfine.to_excel(c.save_hyperfinestructure_zoom_path)
+    #fit_df_spec_hyperfine.to_excel(c.save_hyperfinestructure_zoom_path)
+
+    # Hyperfine splitting
+    dfs_spec_zoomed = dfs_spec
+    dfs_spec_zoomed = filter_zoomed_spectroscopy(dfs_spec_zoomed, return_zoomed=True, return_entire=False)
+    dfs_spec_zoomed = calibrate_voltage_to_freq_scale(dfs_spec_zoomed,
+                                                      calibration_factor=calibration_factor,
+                                                      definition_zero=definition_zero)
+
+    for i in [0, 2, 3]:
+        dfs_spec_zoomed[i][0]['Aux in [V]'] = dfs_spec_zoomed[i][0].loc[:, 'Aux in [V]'].values - \
+                                              gaussian(dfs_spec_zoomed[i][0].index.values, fit_df_spec.iloc[i, 0],
+                                                       fit_df_spec.iloc[i, 2], fit_df_spec.iloc[i, 4],
+                                                       fit_df_spec.iloc[i, 6])
+
+    params_crossings = [[3.895,3.915,3.935,3.95,3.985],[1.18,1.22,1.25,1.285,1.355],[6.175,6.21,6.26,6.3,6.38],
+                        [-0.02,0.075,0.13,0.22,0.375]]
+    crossings = get_zero_crossings(dfs_spec_zoomed, params_crossings)
+    crossings_err = np.abs(np.subtract(crossings, params_crossings))
+    df_crossings = pd.DataFrame(data=crossings, index=[x[1][:4] for x in dfs_spec_zoomed])
+    df_crossings = pd.concat([df_crossings, pd.DataFrame(data=crossings_err, index=[x[1][:4]+'_err' for x in dfs_spec_zoomed])])
+    #df_crossings.to_excel(c.save_crossings)
+    crossings.append([1,4])
+    crossings.append([1,4])
+    crossings.append([1,4])
+    crossings.append([1,4])
+    print(df_crossings)
+    plot_dfs_spectroscopy(dfs_spec_zoomed, max_column_number=2, plot_PDH_out=True, plot_fit=False, crossings=crossings)
+    plt.show()
 
 if __name__ == '__main__':
     main()

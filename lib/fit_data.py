@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from lib.util import _remove_nan_from_masked_column, get_nearest_index_in_array
 from lmfit import Parameters, minimize
-from lmfit.models import Model, LinearModel, ExponentialModel
+from lmfit.models import Model, LinearModel, ExponentialModel, LorentzianModel
 
 
 def loading_residual(pars, x, data=None):

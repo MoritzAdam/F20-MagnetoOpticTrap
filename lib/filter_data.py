@@ -1,6 +1,7 @@
 import lib.constants as c
 from pandas import Series
 from lib.parse_plot_data import make_spectroscopy_df
+import numpy as np
 
 def filter_loading(dfs, rolling=1):
     # Filtering values that are equal to the minimum value
