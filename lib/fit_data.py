@@ -208,7 +208,7 @@ def fit_single_spectroscopy_column(df, x_crop, y_crop, init_params, i, fcts, fct
     params = _get_init_params(fct, init_params, model, x_crop, y_crop, i)
 
     fit = model.fit(y_crop, x=x_crop, params=params, method='leastsq', nan_policy='propagate')
-    print(fit.fit_report(min_correl=0.25))
+    # print(fit.fit_report(min_correl=0.25))
 
     fit_stat = _save_fit_params(fit, fit_stat)
 
