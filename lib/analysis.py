@@ -10,7 +10,7 @@ from scipy.special import erf
 
 def conversion_atoms(delta, v_out, v_out_err):
     scat_rate = c.GAMMA / 2 * (c.INTENSITY / c.INTENSITY_SAT) / (
-                1 + (c.INTENSITY / c.INTENSITY_SAT) + 4 * (delta / c.GAMMA) ** 2)
+            1 + (c.INTENSITY / c.INTENSITY_SAT) + 4 * (delta / c.GAMMA) ** 2)
     energy = const.h * const.c / c.LASER_LENGTH
     atoms = v_out / (c.QE * c.G * c.S * c.T * c.SOLID_ANGLE * scat_rate * energy)
     err_atoms = np.sqrt((v_out_err / v_out) ** 2 + c.G_REL_ERROR ** 2 + c.QE_REL_ERROR ** 2) * atoms
@@ -84,8 +84,8 @@ def recapture_analysis(mean):
     popt, pcov = curve_fit(fitfunction, duration, frac)
     param = popt[0]
     err_param = np.sqrt(np.diag(pcov))[0]
-    temp = (c.MOT_RADIUS/param)**2*c.RB85_MASS*1e6/const.k  # Temperature in K
-    err_temp = err_param/param*temp
+    temp = (c.MOT_RADIUS / param) ** 2 * c.RB85_MASS * 1e6 / const.k  # Temperature in K
+    err_temp = err_param / param * temp
     print('temperature in K: {}, error: {}'.format(temp, err_temp))
 
     # Plot data
@@ -94,21 +94,22 @@ def recapture_analysis(mean):
     plt.legend()
     plt.xlabel('$down \ time \ [ms]$')
     plt.ylabel('$N/N_0$')
-    plt.text(68, 0.85, 'temperature = '+str(int(round((temp*1e6),0)))+'$ \pm $'+str(int(round(err_temp*1e6,0)))+' $\mu$K')
+    plt.text(68, 0.85, 'temperature = ' + str(int(round((temp * 1e6), 0))) + '$ \pm $' + str(
+        int(round(err_temp * 1e6, 0))) + ' $\mu$K')
 
 
 def save_temp_from_finestructure_in_fit_df(fit_data):
     sig = fit_data[['sig', 'sig_err']]
     constants = {'85f2': (c.RB85_MASS, c.RB85_NU0 - 1.77084), '85f3': (c.RB85_MASS, c.RB85_NU0 + 1.26489),
-                 '87f1': (c.RB87_MASS, c.RB87_NU0 - 4.27168), '87f2': (c.RB87_MASS, c.RB87_NU0 + 2.56301    )}
+                 '87f1': (c.RB87_MASS, c.RB87_NU0 - 4.27168), '87f2': (c.RB87_MASS, c.RB87_NU0 + 2.56301)}
     temps = {}
 
     for index, row in sig.iterrows():
         mass, nu0 = constants[index]
 
-        temp = (row['sig']/nu0) ** 2 * mass * c.C ** 2 * (1 / (c.K_BOLTZMANN))
+        temp = (row['sig'] / nu0) ** 2 * mass * c.C ** 2 * (1 / (c.K_BOLTZMANN))
         temp_err = temp * (np.sqrt(2) * row['sig_err'] / row['sig'])
-        sigma_therm_gas = nu0*np.sqrt(c.K_BOLTZMANN*293.15/(mass*c.C**2))
+        sigma_therm_gas = nu0 * np.sqrt(c.K_BOLTZMANN * 293.15 / (mass * c.C ** 2))
         temps[index] = [temp, temp_err, sigma_therm_gas]
 
     temp = pd.DataFrame.from_dict(data=temps, orient='index',

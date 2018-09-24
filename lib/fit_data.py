@@ -119,7 +119,6 @@ def _initialize_fit_data_df(fct, dfs, use_splitted_masks=False, masks=None, numb
             fit_params['linear{}_intercept'.format(i)] = []
             fit_params['linear{}_slope'.format(i)] = []
 
-
     if fct == 'poly_lorentzian':
         if number_unique_lorentzians is None:
             raise UserWarning('number of unique lorentzians need to be provided for the fit')
@@ -163,7 +162,8 @@ def fit_spectroscopy_dfs(dfs, fct='gaussian', init_params=None, column_to_fit='A
     else:
         unique_lorentzians = [None, None, None, None]
         max_numb_unique_lorentzians = None
-    fit_stat = _initialize_fit_data_df(fct, dfs, use_splitted_masks=use_splitted_masks, masks=masks, number_unique_lorentzians=max_numb_unique_lorentzians)
+    fit_stat = _initialize_fit_data_df(fct, dfs, use_splitted_masks=use_splitted_masks, masks=masks,
+                                       number_unique_lorentzians=max_numb_unique_lorentzians)
     dfs_fitted = []
 
     for i, df in enumerate(dfs):
@@ -182,13 +182,16 @@ def fit_spectroscopy_dfs(dfs, fct='gaussian', init_params=None, column_to_fit='A
                 column_extension = '-' + str(count)
                 y_crop = df.loc[:, 'Masked - ' + column_to_fit + column_extension].values
                 df, fit_stat = fit_single_spectroscopy_column(df, x_crop, y_crop, single_init_params, i, fcts, fct,
-                                                              fit_stat, column_to_fit, column_extension=column_extension,
+                                                              fit_stat, column_to_fit,
+                                                              column_extension=column_extension,
                                                               number_unique_lorentzians=unique_lorentzians[i])
                 count += 1
         else:
             y_crop = df.loc[:, 'Masked - ' + column_to_fit].values
-            df, fit_stat = fit_single_spectroscopy_column(df, x_crop, y_crop, single_init_params, i, fcts, fct, fit_stat,
-                                                          column_to_fit, number_unique_lorentzians=unique_lorentzians[i])
+            df, fit_stat = fit_single_spectroscopy_column(df, x_crop, y_crop, single_init_params, i, fcts, fct,
+                                                          fit_stat,
+                                                          column_to_fit,
+                                                          number_unique_lorentzians=unique_lorentzians[i])
         dfs_fitted.append((df, file_name))
 
     fit_df = pd.DataFrame(data=fit_stat)
@@ -260,7 +263,7 @@ def _make_model(fct, number_unique_lorentzians=None):
 
 
 def gaussian(x, amp, cen, sig, off):
-    return amp / (np.sqrt(2 * np.pi) * sig) * np.exp(-((x-cen) / sig)**2 / 2) + off
+    return amp / (np.sqrt(2 * np.pi) * sig) * np.exp(-((x - cen) / sig) ** 2 / 2) + off
 
 
 def double_gaussian():
@@ -283,7 +286,7 @@ def poly_gaussian():
 
 
 def lorentzian(x, amp, cen, gamma):
-    return amp / (np.pi * gamma) * 1 / (1 + (x-cen)**2 / gamma**2)
+    return amp / (np.pi * gamma) * 1 / (1 + (x - cen) ** 2 / gamma ** 2)
 
 
 def poly_lorentzian(number_unique_lorentzians=None):
@@ -316,6 +319,7 @@ def _save_fit_params(fit, fit_data):
 
     return fit_data
 
+
 def create_fit_data_from_params(dfs, column_to_fit, fit_data, fct='gaussian', column_extension=''):
     new_dfs = []
     for df in dfs:
@@ -335,6 +339,3 @@ def create_fit_data_from_params(dfs, column_to_fit, fit_data, fct='gaussian', co
         else:
             raise UserWarning('create fit from params not yet implemented for the chosen function')
     return new_dfs
-
-
-

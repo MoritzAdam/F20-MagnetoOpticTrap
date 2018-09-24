@@ -3,6 +3,7 @@ from pandas import Series
 from lib.parse_plot_data import make_spectroscopy_df
 import numpy as np
 
+
 def filter_loading(dfs, rolling=1):
     # Filtering values that are equal to the minimum value
     for i, df in enumerate(dfs):
@@ -61,7 +62,6 @@ def calibrate_voltage_to_freq_scale(dfs, calibration_factor, definition_zero):
 
 
 def subtract_gaussian_fit(dfs):
-
     filtered_dfs = []
     for df in dfs:
         if not len(df) == 1:

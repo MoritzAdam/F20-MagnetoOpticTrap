@@ -7,13 +7,15 @@ from math import ceil
 from string import ascii_lowercase
 from lib.util import get_nearest_in_dataframe, _remove_nan_from_masked_column
 
+
 def import_dict(str):
     det = {}
-    with open('../data/'+str) as f:
+    with open('../data/' + str) as f:
         for line in f:
             (key, val) = line.split()
             det[key] = float(val)
     return det
+
 
 def get_txt_csv(path):
     files = os.listdir(path)
@@ -59,31 +61,34 @@ def plot_dfs(dfs, style, recapture=None):
         if df.get('best fit') is not None:
             axes[i].plot(df.index, df['best fit'].values, 'r-', markersize=c.PLOT_MARKERSIZE, color=c.RED)
         if recapture is not None:
-            axes[i].plot(df.index, recapture[0][i]*np.ones(len(df.index)), '--', color=c.GREEN)
-            axes[i].plot(df.index, recapture[1][i]*np.ones(len(df.index)), '--', color=c.GREEN)
-        axes[i].set_title(style[0]+str(dict[df.columns[0]])+style[2], fontsize='10')
+            axes[i].plot(df.index, recapture[0][i] * np.ones(len(df.index)), '--', color=c.GREEN)
+            axes[i].plot(df.index, recapture[1][i] * np.ones(len(df.index)), '--', color=c.GREEN)
+        axes[i].set_title(style[0] + str(dict[df.columns[0]]) + style[2])
     for i in range(0, plot_columns):
-        axes[i*4].set_ylabel(style[3])
-    for i in range(4*plot_columns-4, 4*plot_columns):
+        axes[i * 4].set_ylabel(style[3])
+    for i in range(4 * plot_columns - 4, 4 * plot_columns):
         axes[i].set_xlabel(style[4])
-    for i in range(len(dfs),4*plot_columns):
+    for i in range(len(dfs), 4 * plot_columns):
         axes[i].set_visible(False)
     plt.tight_layout()
 
 
 # TODO: split up functions in smaller parts
-def plot_dfs_spectroscopy(dfs, max_column_number, x_label, y_label, fit_data=None, plot_initial=True, plot_PDH_out=False, plot_fit=False,
+def plot_dfs_spectroscopy(dfs, max_column_number, x_label, y_label, fit_data=None, plot_initial=True,
+                          plot_PDH_out=False, plot_fit=False,
                           plot_deriv=False, plot_data_with_subtracted_fit=False, plot_hyperfine_fit=False,
-                          use_global_zoom_for_hyperfine=False, subplot_title_addition='', emphasize=None, usable_lorentz=None, highlighted_lorentz=None,
-                          use_splitted_masks=False, use_automated_fit_plot_barrier=False, column_name='Aux in [V]', masks=None, crossings=False):
+                          use_global_zoom_for_hyperfine=False, subplot_title_addition='', emphasize=None,
+                          usable_lorentz=None, highlighted_lorentz=None,
+                          use_splitted_masks=False, use_automated_fit_plot_barrier=False, column_name='Aux in [V]',
+                          masks=None, crossings=False):
     if not use_global_zoom_for_hyperfine:
         zoom = [(0, -1), (0, -1), (0, -1), (0, -1)]
     else:
         zoom = c.GLOBAL_ZOOM_FOR_HYPERFINE
 
-    plot_columns = ceil(len(dfs)/max_column_number)
+    plot_columns = ceil(len(dfs) / max_column_number)
     fig, axis = plt.subplots(plot_columns, max_column_number,
-                             figsize=(15, plot_columns*2), facecolor='w', edgecolor='k')
+                             figsize=(15, plot_columns * 3), facecolor='w', edgecolor='k')
 
     if not max_column_number == 1:
         axis = axis.ravel()
@@ -93,9 +98,11 @@ def plot_dfs_spectroscopy(dfs, max_column_number, x_label, y_label, fit_data=Non
     for i, df in enumerate(dfs):
         df, file_name = df
         add_axis = axis[i].twinx()
-
+        axis[i].tick_params(axis='both', which='major', labelsize=c.PLOT_AX_TICK_SIZE)
+        add_axis.tick_params(axis='both', which='major', labelsize=c.PLOT_AX_TICK_SIZE)
         if plot_initial:
             axis[i].plot(df.index, df.values[:, 0], '.', color='steelblue', markersize=c.PLOT_MARKERSIZE)
+            axis[i].set_ylabel(y_label + ' (initial spectrum)', fontsize=c.PLOT_AX_LABEL_SIZE)
 
         if emphasize is not None:
             for single_emphasize in emphasize:
@@ -103,23 +110,32 @@ def plot_dfs_spectroscopy(dfs, max_column_number, x_label, y_label, fit_data=Non
                 lower = get_nearest_in_dataframe(df, lower)
                 upper = get_nearest_in_dataframe(df, upper)
                 df_to_be_emphasized = df.loc[lower.name:upper.name]
-                axis[i].plot(df_to_be_emphasized.index, df_to_be_emphasized.values[:, 'Aux in [V]'], '.', color='orangered',
+                axis[i].plot(df_to_be_emphasized.index, df_to_be_emphasized.values[:, 'Aux in [V]'], '.',
+                             color='orangered',
                              markersize=c.PLOT_MARKERSIZE)
 
         if plot_PDH_out:
-            add_axis.plot(df.index, df.loc[:, 'PDH out [a.u.]'].values, '.', color='grey', alpha=0.3, markersize=c.PLOT_MARKERSIZE)
+            offset = np.min(df.loc[:, 'PDH out [a.u.]'].values[zoom[i][0]:zoom[i][1]])
+            axis[i].plot(df.index[zoom[i][1]], offset, alpha=0)
+            axis[i].plot(df.index[zoom[i][0]:zoom[i][1]],
+                         df.loc[:, 'PDH out [a.u.]'].values[zoom[i][0]:zoom[i][1]] + 3 * abs(offset),
+                         '-', color='grey', alpha=0.3, markersize=c.PLOT_MARKERSIZE)
+            axis[i].axhline(y=3 * abs(offset), xmin=zoom[i][0], xmax=zoom[i][1], linestyle=':', color='grey')
+            axis[i].yaxis.set_ticks([])
 
         if crossings:
             for j in range(0, len(crossings[i])):
-                realline1=crossings[i+4][0]
-                realline2=crossings[i+4][1]
+                realline1 = crossings[i + 4][0]
+                realline2 = crossings[i + 4][1]
                 if j == realline1 or j == realline2:
                     axis[i].axvline(x=crossings[i][j], color='r')
                 else:
                     axis[i].axvline(x=crossings[i][j], color='black')
-                y_val = (np.max(df.values[:, 0])+np.mean(df.values[:, 0]))/2
-                axis[i].annotate(s='', xy=(crossings[i][realline2], y_val), xytext=(crossings[i][realline1], y_val), arrowprops=dict(arrowstyle='<->', color='r'))
-                axis[i].text(crossings[i][j], (np.min(df.values[:, 0])+np.mean(df.values[:, 0]))/2, s=' '+ascii_lowercase[j]+')')
+                y_val = (np.max(df.values[:, 0]) + np.mean(df.values[:, 0])) / 2
+                axis[i].annotate(s='', xy=(crossings[i][realline2], y_val), xytext=(crossings[i][realline1], y_val),
+                                 arrowprops=dict(arrowstyle='<->', color='r'))
+                axis[i].text(crossings[i][j], (np.min(df.values[:, 0]) + np.mean(df.values[:, 0])) / 2,
+                             s=' ' + ascii_lowercase[j] + ')')
 
         if plot_data_with_subtracted_fit:
             add_axis.plot(df.index[zoom[i][0]:zoom[i][1]],
@@ -164,7 +180,8 @@ def plot_dfs_spectroscopy(dfs, max_column_number, x_label, y_label, fit_data=Non
                         lower_fit_plot_barrier = get_nearest_in_dataframe(df, cen - 7 * gamma).name
                         upper_fit_plot_barrier = get_nearest_in_dataframe(df, cen + 7 * gamma).name
 
-                        series = df.loc[lower_fit_plot_barrier:upper_fit_plot_barrier, 'Best fit - ' + column_name + column_extension]
+                        series = df.loc[lower_fit_plot_barrier:upper_fit_plot_barrier,
+                                 'Best fit - ' + column_name + column_extension]
 
                         add_axis.plot(series.index.values, series.values,
                                       '-', color='r', alpha=0.7, markersize=c.PLOT_MARKERSIZE)
@@ -176,10 +193,14 @@ def plot_dfs_spectroscopy(dfs, max_column_number, x_label, y_label, fit_data=Non
                     ax = add_axis
                 else:
                     ax = axis[i]
-                ax.plot(df.index[zoom[i][0]:zoom[i][1]], df.loc[:, c.MASK_NAME + column_name].values[zoom[i][0]:zoom[i][1]], '.', color='black',
-                             markersize=c.PLOT_MARKERSIZE)
-                ax.plot(df.index[zoom[i][0]:zoom[i][1]], df.loc[:, 'Best fit - ' + column_name].values[zoom[i][0]:zoom[i][1]], '-', color='r', alpha=0.7,
-                             markersize=c.PLOT_MARKERSIZE)
+                    add_axis.yaxis.set_ticks([])
+                ax.plot(df.index[zoom[i][0]:zoom[i][1]],
+                        df.loc[:, c.MASK_NAME + column_name].values[zoom[i][0]:zoom[i][1]], '.', color='black',
+                        markersize=c.PLOT_MARKERSIZE)
+                ax.plot(df.index[zoom[i][0]:zoom[i][1]],
+                        df.loc[:, 'Best fit - ' + column_name].values[zoom[i][0]:zoom[i][1]], '-', color='r', alpha=0.7,
+                        markersize=c.PLOT_MARKERSIZE)
+                ax.set_ylabel(y_label + ' (fitted spectrum)', fontsize=c.PLOT_AX_LABEL_SIZE)
 
             if fit_data is not None:
                 centers = []
@@ -195,20 +216,22 @@ def plot_dfs_spectroscopy(dfs, max_column_number, x_label, y_label, fit_data=Non
                 if usable_lorentz is not None:
                     for n in range(usable_lorentz[i]):
                         ax.text(fit_data.loc[file_name, centers[n]],
-                            np.min(np.asarray(df.loc[:, 'Best fit - ' + column_name].values[zoom[i][0]:zoom[i][1]])),
-                            labels[string_count] + ')')
+                                np.min(
+                                    np.asarray(df.loc[:, 'Best fit - ' + column_name].values[zoom[i][0]:zoom[i][1]])),
+                                labels[string_count] + ')', fontsize=c.PLOT_ANNOTATION_TEXT_SIZE)
                         string_count += 1
                 else:
                     for n in range(len(centers)):
                         ax.text(fit_data.loc[file_name, centers[n]],
-                            np.min(np.asarray(df.loc[:, 'Best fit - ' + column_name].values[zoom[i][0]:zoom[i][1]])),
-                            labels[string_count] + ')')
+                                np.min(
+                                    np.asarray(df.loc[:, 'Best fit - ' + column_name].values[zoom[i][0]:zoom[i][1]])),
+                                labels[string_count] + ')', fontsize=c.PLOT_ANNOTATION_TEXT_SIZE)
                         string_count += 1
+
                 if highlighted_lorentz is not None:
                     for n in range(len(highlighted_lorentz[i])):
-                        ax.axvline(fit_data['lorentzian{}_cen'.format(highlighted_lorentz[i][n])].iloc[i], color='black')
-
-
+                        ax.axvline(fit_data['lorentzian{}_cen'.format(highlighted_lorentz[i][n])].iloc[i],
+                                   color='black')
 
         if plot_hyperfine_fit:
             if not plot_data_with_subtracted_fit:
@@ -219,17 +242,12 @@ def plot_dfs_spectroscopy(dfs, max_column_number, x_label, y_label, fit_data=Non
                           '.', color='black', markersize=c.PLOT_MARKERSIZE)
 
         if plot_deriv:
-            add_axis = axis[i].twinx()
             add_axis.plot(df.index[zoom[i][0] + 1:zoom[i][1]],
                           np.diff(np.asarray(df.loc[:, 'Aux in [V]'].values))[zoom[i][0]:zoom[i][1]],
                           '-', color='limegreen', alpha=0.4, markersize=c.PLOT_MARKERSIZE)
 
-        axis[i].set_title(txt_title(file_name) + subplot_title_addition, fontsize=10)
-        axis[i].set_xlabel(x_label)
-        axis[i].set_ylabel(y_label)
-
-
-
+        axis[i].set_title(txt_title(file_name) + subplot_title_addition, fontsize=c.PLOT_TITLE_SIZE)
+        axis[i].set_xlabel(x_label, fontsize=c.PLOT_AX_LABEL_SIZE)
 
     if not max_column_number == 1:
         plt.tight_layout()
@@ -239,6 +257,6 @@ def plot_dfs_spectroscopy(dfs, max_column_number, x_label, y_label, fit_data=Non
 
 def txt_title(file_name):
     if not file_name[:3] == 'all':
-        return r'$^{%s}Rb; \ F=%s \rightarrow F´$'%(file_name[0:2], file_name[3:4])
+        return r'$^{%s}Rb; \ F=%s \rightarrow F´$' % (file_name[0:2], file_name[3:4])
     else:
         return r'$^{85}Rb \ and \ ^{87}Rb \ spectrum$'

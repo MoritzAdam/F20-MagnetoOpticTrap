@@ -117,8 +117,8 @@ def _remove_nan_from_masked_column(index, col):
 def get_multiplet_separation(fit_df, left, right):
     # Use left=1, right=4 for calibration
     separation = fit_df['gauss{}_cen'.format(right)].values[0] - fit_df['gauss{}_cen'.format(left)].values[0]
-    error = np.sqrt(fit_df['gauss{}_sig'.format(right)].values[0]**2
-                    + fit_df['gauss{}_sig'.format(left)].values[0]**2)
+    error = np.sqrt(fit_df['gauss{}_sig'.format(right)].values[0] ** 2
+                    + fit_df['gauss{}_sig'.format(left)].values[0] ** 2)
     return separation, error
 
 
@@ -139,7 +139,7 @@ def get_multiplet_df(df):
     for key in data:
         val, err = data[key]
         data[key] = (c.RB87_FREQ_SEP_THEORY_F1_F2 * val / cal,
-                     (c.RB87_FREQ_SEP_THEORY_F1_F2 * val / cal * np.sqrt((err / val)**2 + (cal_err / cal)**2)))
+                     (c.RB87_FREQ_SEP_THEORY_F1_F2 * val / cal * np.sqrt((err / val) ** 2 + (cal_err / cal) ** 2)))
 
     data = pd.DataFrame.from_dict(data=data, orient='index',
                                   columns=['separation in frequency [GHz]',
