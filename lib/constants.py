@@ -14,7 +14,7 @@ save_finestructure_path = os.path.join(evaluation_path, 'finestructure_fit.xlsx'
 save_multiplet_path = os.path.join(evaluation_path, 'multiplet_separation.xlsx')
 save_hyperfinestructure_path = os.path.join(evaluation_path, 'hyperfinestructure_fit.xlsx')
 save_hyperfinestructure_zoom_path = os.path.join(evaluation_path, 'hyperfinestructure_zoom_fit.xlsx')
-save_crossings = os.path.join(data_path, 'crossings.xlsx')
+save_crossings_path = os.path.join(evaluation_path, 'hyperfine_PDH_crossings.xlsx')
 
 PLOT_MARKERSIZE = 2
 PLOT_TITLE_SIZE = 14
@@ -48,6 +48,7 @@ MASK_NAME = 'Masked - '
 RB87_FREQ_SEP_THEORY_F1_F2 = 6.834682610904290  # (90) [GHz]
 K_BOLTZMANN = sc.k
 C = sc.c
+H_BAR = sc.hbar
 FIT_PLOT_BARRIER = 100
 RB87_NU0 = 384230.4844685  # (62) GHz
 RB85_NU0 = 384230.406373  # (14) GHz
@@ -59,4 +60,6 @@ GLOBAL_ZOOM_FOR_HYPERFINE = [(460, -400),
 
 START_TOKEN = 'START_TOKEN'
 STOP_TOKEN = 'STOP_TOKEN'
+
+ZERO_CROSSING_SEARCH_OFFSET = 5
 # RB_FINESTRUCTURE_THEORY = {'85f2': }

@@ -4,6 +4,7 @@ import pandas as pd
 import scipy.constants as const
 import lib.constants as c
 from lib.parse_plot_data import import_dict
+from lib.util import get_nearest_in_dataframe
 from scipy.optimize import curve_fit
 from scipy.special import erf
 
@@ -107,15 +108,69 @@ def save_temp_from_finestructure_in_fit_df(fit_data):
     for index, row in sig.iterrows():
         mass, nu0 = constants[index]
 
+        fwhm = row['sig'] * 2 * np.sqrt(2 * np.log(2))
+        fwhm_err = fwhm * row['sig_err'] / row['sig']
+        doppler_temp = fwhm * c.H_BAR / (2 * c.K_BOLTZMANN) * 1e9
+        doppler_temp_err = doppler_temp * fwhm_err / fwhm
+        fwhm_therm_gas = 293.15 * 2 * c.K_BOLTZMANN / c.H_BAR * 1e-9
+
         temp = (row['sig'] / nu0) ** 2 * mass * c.C ** 2 * (1 / (c.K_BOLTZMANN))
         temp_err = temp * (np.sqrt(2) * row['sig_err'] / row['sig'])
         sigma_therm_gas = nu0 * np.sqrt(c.K_BOLTZMANN * 293.15 / (mass * c.C ** 2))
-        temps[index] = [temp, temp_err, sigma_therm_gas]
+        temps[index] = [temp, temp_err, sigma_therm_gas, fwhm, fwhm_err, doppler_temp, doppler_temp_err, fwhm_therm_gas]
 
     temp = pd.DataFrame.from_dict(data=temps, orient='index',
-                                  columns=['Temperature of atomic sample [K]',
-                                           'Temperature error [K]',
-                                           'sigma theory thermal gas (293.15 K)'])
+                                  columns=['Temperature atomic sample [K]',
+                                           'error temperature [K]',
+                                           'sigma thermal gas [GHz]',
+                                           'FWHM [GHz]',
+                                           'FWHM_err [GHz]',
+                                           'Doppler temperature [K]',
+                                           'Doppler temperature error [K]',
+                                           'FWHM theory thermal gas (293.15 K) [GHz]'])
 
     fit_data = pd.concat([fit_data, temp], axis=1)
     return fit_data
+
+
+def PDH_zero_crossings(dfs, guessed_zero_crossings):
+    calculated_zero_crossings = {}
+    count = 0
+    guessed_zero_crossings = np.asarray(guessed_zero_crossings)
+
+    for df in dfs:
+        df, file_name = df
+        zero_crossings = PDH_single_df_zero_crossing(df, guessed_zero_crossings[count])
+        calculated_zero_crossings['{}'.format(count)], calculated_zero_crossings['{}_err'.format(count)]\
+            = zero_crossings
+        count += 1
+    print('zero crossings from PDH signal', calculated_zero_crossings)
+    return calculated_zero_crossings
+
+
+def PDH_single_df_zero_crossing(df, guessed_zero_crossings):
+    calculated_crossings = []
+    calculated_crossings_error = []
+    for guessed_crossing in guessed_zero_crossings:
+        index = df.index.get_loc(guessed_crossing, "nearest")
+        cropped_df = df.iloc[index-c.ZERO_CROSSING_SEARCH_OFFSET
+                             :index+c.ZERO_CROSSING_SEARCH_OFFSET].loc[:, 'PDH out [a.u.]']
+        y = cropped_df.values
+        x = cropped_df.index.values
+        single_crossing, crossing_error = single_zero_crossing(x, y)
+        calculated_crossings.append(single_crossing)
+        calculated_crossings_error.append(crossing_error)
+    return (calculated_crossings, calculated_crossings_error)
+
+
+def single_zero_crossing(x, y):
+    x = np.asarray(x)
+    y = np.asarray(y)
+    crossing = x[c.ZERO_CROSSING_SEARCH_OFFSET - 1]
+    crossing_err = 0
+    for i in range(len(x)):
+        if y[i-1] <= 0 and y[i] > 0:
+            crossing = (x[i-1] + x[i]) / 2
+            crossing_err = (x[i] - x[i-1]) / 2
+
+    return (crossing, crossing_err)

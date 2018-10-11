@@ -34,7 +34,7 @@ def filter_zoomed_spectroscopy(dfs, return_zoomed=False, return_entire=True):
     return filtered_dfs
 
 
-def calibrate_voltage_to_freq_scale(dfs, calibration_factor, definition_zero):
+def  calibrate_voltage_to_freq_scale(dfs, calibration_factor, definition_zero):
     '''
     calibrates voltage axis with theoretical freq difference for the two 87Rb fine structure transitions
     changes df index from voltage to calibrated freq, drops voltage values

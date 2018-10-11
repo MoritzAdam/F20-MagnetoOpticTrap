@@ -248,7 +248,7 @@ def _get_init_params(fct, init_params, model, x_crop, y_crop, i, number_unique_l
         for param in params.keys():
             params[param].set(init_params[param])
     else:
-        raise UserWarning('provided and expected parameters do not match')
+        raise UserWarning('provided and expected parameters do not match with initial_params {}'.format(init_params))
 
     return params
 
@@ -314,6 +314,7 @@ def _save_fit_params(fit, fit_data):
                 fit_data[key].append(0.0)
                 fit_data[key + '_err'].append(0.0)
             else:
+                #print(fit_params[key])
                 fit_data[key].append(fit_params[key].value)
                 fit_data[key + '_err'].append(fit_params[key].stderr)
 

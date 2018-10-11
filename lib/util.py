@@ -4,9 +4,9 @@ import lib.constants as c
 from math import isnan
 
 
-def get_nearest_in_dataframe(df_series, vals_to_search):
-    index = df_series.index.get_loc(vals_to_search, "nearest")
-    return df_series.iloc[index]
+def get_nearest_in_dataframe(df, vals_to_search):
+    index = df.index.get_loc(vals_to_search, "nearest")
+    return df.iloc[index]
 
 
 def get_nearest_index_in_array(array, value):

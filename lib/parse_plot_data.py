@@ -79,6 +79,7 @@ def plot_dfs_spectroscopy(dfs, max_column_number, x_label, y_label, fit_data=Non
                           plot_deriv=False, plot_data_with_subtracted_fit=False, plot_hyperfine_fit=False,
                           use_global_zoom_for_hyperfine=False, subplot_title_addition='', emphasize=None,
                           usable_lorentz=None, highlighted_lorentz=None,
+                          zero_crossings=None, usable_zero_crossings=None, highlighted_zero_crossings=None,
                           use_splitted_masks=False, use_automated_fit_plot_barrier=False, column_name='Aux in [V]',
                           masks=None, crossings=False):
     if not use_global_zoom_for_hyperfine:
@@ -88,7 +89,7 @@ def plot_dfs_spectroscopy(dfs, max_column_number, x_label, y_label, fit_data=Non
 
     plot_columns = ceil(len(dfs) / max_column_number)
     fig, axis = plt.subplots(plot_columns, max_column_number,
-                             figsize=(15, plot_columns * 3), facecolor='w', edgecolor='k')
+                             figsize=(10, 6), facecolor='w', edgecolor='k')
 
     if not max_column_number == 1:
         axis = axis.ravel()
@@ -120,7 +121,8 @@ def plot_dfs_spectroscopy(dfs, max_column_number, x_label, y_label, fit_data=Non
             axis[i].plot(df.index[zoom[i][0]:zoom[i][1]],
                          df.loc[:, 'PDH out [a.u.]'].values[zoom[i][0]:zoom[i][1]] + 3 * abs(offset),
                          '-', color='grey', alpha=0.3, markersize=c.PLOT_MARKERSIZE)
-            axis[i].axhline(y=3 * abs(offset), xmin=zoom[i][0], xmax=zoom[i][1], linestyle=':', color='grey')
+            axis[i].axhline(y=3 * abs(offset), xmin=0, xmax=1,
+                            linestyle=':', color='grey')
             axis[i].yaxis.set_ticks([])
 
         if crossings:
@@ -245,6 +247,18 @@ def plot_dfs_spectroscopy(dfs, max_column_number, x_label, y_label, fit_data=Non
             add_axis.plot(df.index[zoom[i][0] + 1:zoom[i][1]],
                           np.diff(np.asarray(df.loc[:, 'Aux in [V]'].values))[zoom[i][0]:zoom[i][1]],
                           '-', color='limegreen', alpha=0.4, markersize=c.PLOT_MARKERSIZE)
+
+        if zero_crossings is not None:
+            if plot_data_with_subtracted_fit:
+                ax = add_axis
+            else:
+                ax = axis[i]
+                add_axis.yaxis.set_ticks([])
+
+            for n in highlighted_zero_crossings[i]:
+                zero_crossing = zero_crossings['{}'.format(i)][n-1]
+                ax.axvline(zero_crossing, color='black')
+            ax.set_ylabel(y_label + ' (spectrum)', fontsize=c.PLOT_AX_LABEL_SIZE)
 
         axis[i].set_title(txt_title(file_name) + subplot_title_addition, fontsize=c.PLOT_TITLE_SIZE)
         axis[i].set_xlabel(x_label, fontsize=c.PLOT_AX_LABEL_SIZE)
