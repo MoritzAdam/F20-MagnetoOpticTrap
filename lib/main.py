@@ -16,6 +16,7 @@ from lib.fit_data import fit_loading_dfs, fit_spectroscopy_dfs, create_fit_data_
 
 
 def main():
+
     # Loading rates
     plt_style = ['$detuning = $', c.DETUNING_DICT, '$ \ Mhz$',  # Title, 1: start, 2: link of the dict, 3: end
                  '$intensity \ [a.u.]$',  # ylabel
@@ -133,7 +134,7 @@ def main():
     # plt.show()
 
     fit_df_spec = save_temp_from_finestructure_in_fit_df(fit_df_spec)
-    #fit_df_spec.to_excel(c.save_finestructure_path)
+    fit_df_spec.to_excel(c.save_finestructure_path)
 
     # Fit hyperfine structure to determine linewidths
     dfs_spec_hyperfine = dfs_spec.copy()
@@ -224,7 +225,9 @@ def main():
                                                          return_zoomed=True,
                                                          return_entire=False)
 
-    dfs_spec_hyperfine_zoom = calibrate_voltage_to_freq_scale(dfs_spec_hyperfine_zoom, calibration_factor=calibration_factor, definition_zero=definition_zero)
+    dfs_spec_hyperfine_zoom = calibrate_voltage_to_freq_scale(dfs_spec_hyperfine_zoom,
+                                                              calibration_factor=calibration_factor,
+                                                              definition_zero=definition_zero)
 
     dfs_spec_hyperfine_zoom = create_fit_data_from_params(dfs_spec_hyperfine_zoom, 'Aux in [V]', fit_df_spec)
 

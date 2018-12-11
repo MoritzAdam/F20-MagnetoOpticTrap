@@ -14,7 +14,8 @@ def conversion_atoms(delta, v_out, v_out_err):
             1 + (c.INTENSITY / c.INTENSITY_SAT) + 4 * (delta / c.GAMMA) ** 2)
     energy = const.h * const.c / c.LASER_LENGTH
     atoms = v_out / (c.QE * c.G * c.S * c.T * c.SOLID_ANGLE * scat_rate * energy)
-    err_atoms = np.sqrt((v_out_err / v_out) ** 2 + c.G_REL_ERROR ** 2 + c.QE_REL_ERROR ** 2) * atoms
+    err_atoms = np.sqrt((v_out_err / v_out) ** 2 + c.G_REL_ERROR ** 2 + c.QE_REL_ERROR ** 2 + ((c.INTENSITY_ERR/c.INTENSITY_SAT)/(
+            1 + (c.INTENSITY / c.INTENSITY_SAT) + 4 * (delta / c.GAMMA) ** 2)-c.INTENSITY_ERR/c.INTENSITY)**2) * atoms
     return atoms, err_atoms
 
 
@@ -31,16 +32,20 @@ def loading_analysis(fit_df):
     alpha = 1 / fit_df['tau'].values
     err_alpha = fit_df['tau_err'].values / fit_df['tau'].values * alpha
     N, err_N = conversion_atoms(det_arr * 1e6, fit_df['amp'].values, fit_df['amp_err'].values)
+    print('number of atoms:', N, 'error of number of atoms', err_N)
     L = np.multiply(alpha, N)
     err_L = np.sqrt((err_alpha / alpha) ** 2 + (err_N / N) ** 2) * L
+    print('loading rate:', L, 'error of loading rate', err_L)
 
-    fig, axis = plt.subplots(3, 1, figsize=(10, 10), sharex=True)
+    fig, axis = plt.subplots(3, 1, figsize=(8, 6), sharex=True)
     axis[0].errorbar(det_arr, L, xerr=c.DETUNING_ERROR, yerr=err_L, fmt='.', color=c.BLUE)
     axis[1].errorbar(det_arr, alpha, xerr=c.DETUNING_ERROR, yerr=err_alpha, fmt='.', color=c.RED)
     axis[2].errorbar(det_arr, N, yerr=err_N, xerr=c.DETUNING_ERROR, fmt='.', color=c.GREEN)
     axis[2].set(xlabel='$detuning \ [MHz]$', ylabel='$N$', title='$particle \ number$')
     axis[1].set(ylabel=r'$ \alpha \ [1/s]$', title='$loss \ coefficient$')
-    axis[0].set(ylabel='$L \ [1/s]$', title='loading rate')
+    axis[0].set(ylabel='$L \ [1/s]$', title='$loading \ rate$')
+
+    plt.tight_layout()
 
 
 def calculate_mean(fit_df, dfs):
@@ -108,9 +113,9 @@ def save_temp_from_finestructure_in_fit_df(fit_data):
     for index, row in sig.iterrows():
         mass, nu0 = constants[index]
 
-        fwhm = row['sig'] * 2 * np.sqrt(2 * np.log(2))
+        fwhm = 2 * row['sig'] * 2 * np.sqrt(2 * np.log(2))
         fwhm_err = fwhm * row['sig_err'] / row['sig']
-        doppler_temp = fwhm * c.H_BAR / (2 * c.K_BOLTZMANN) * 1e9
+        doppler_temp = fwhm * c.H_BAR / (4 * c.K_BOLTZMANN) * 1e9
         doppler_temp_err = doppler_temp * fwhm_err / fwhm
         fwhm_therm_gas = 293.15 * 2 * c.K_BOLTZMANN / c.H_BAR * 1e-9
 

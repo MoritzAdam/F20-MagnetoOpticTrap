@@ -52,7 +52,7 @@ def make_spectroscopy_df(path):
 
 def plot_dfs(dfs, style, recapture=None):
     plot_columns = ceil(len(dfs) / 4)
-    fig, axes = plt.subplots(plot_columns, 4, figsize=(15, plot_columns * 2), facecolor='w', edgecolor='k')
+    fig, axes = plt.subplots(plot_columns, 4, figsize=(11, plot_columns * 1.5), facecolor='w', edgecolor='k')
     dict = import_dict(style[1])
     axes = axes.ravel()
     for i, df in enumerate(dfs):
